@@ -15,7 +15,25 @@ namespace aitr_connect
         protected void Page_Load(object sender, EventArgs e)
         {
             // tea - straw - connect - poke - get soda - consume
-            String myConnectionString = "Data Source=SQL8012.site4now.net;Initial Catalog=db_9ab8b7_126dda14621;User Id=db_9ab8b7_126dda14621_admin;Password=DG5py76V;";
+            String myConnectionString = ConfigurationManager.ConnectionStrings["KailingConnectionString"].ConnectionString;
+
+
+            if (myConnectionString.ToUpper().Equals("DEV"))
+            {
+                myConnectionString = AppConstant.Connection.DevConnectionString;
+            }
+            else if (myConnectionString.ToUpper().Equals("TEST"))
+            {
+                myConnectionString = AppConstant.Connection.TestConnectionString;
+            }
+            else if (myConnectionString.ToUpper().Equals("PROD"))
+            {
+                myConnectionString = AppConstant.Connection.ProdConnectionString;
+            }
+            else
+            {
+                myConnectionString = "";
+            }
 
             SqlConnection myconn = new SqlConnection();
             myconn.ConnectionString = myConnectionString;
