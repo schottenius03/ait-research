@@ -12,7 +12,7 @@
             <asp:Label ID="lblTitle" runat="server" Text="Welcome to AIT Research" Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
             <br />
             <br />
-            <asp:Button ID="btnSearch" runat="server" Text="Search repsondents" />
+            <asp:Button ID="btnSearch" runat="server" Text="Search repsondents" OnClick="btnSearch_Click" />
             <br />
             <br />
             <asp:Button ID="btnRegister" runat="server" Text="Register respondent" />

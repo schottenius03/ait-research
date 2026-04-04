@@ -13,5 +13,10 @@ namespace aitr_connect
         {
 
         }
+
+        protected void btnSearch_Click(object sender, EventArgs e)
+        {
+            Response.Redirect(AppConstant.PageCatalog.strSearchPage);
+        }
     }
 }

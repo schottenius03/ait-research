@@ -87,5 +87,10 @@ namespace aitr_connect
                 lblTitle.Text = "General system error!!! Try again later.";
             }
         }
+
+        protected void btnBackToDefault_Click(object sender, EventArgs e)
+        {
+            Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+        }
     }
 }
