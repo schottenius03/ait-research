@@ -16,7 +16,7 @@
             <br />
             <br />
             <asp:TextBox ID="tbxSearch" runat="server"></asp:TextBox>
-            <asp:Button ID="btnSearch" runat="server" Text="Search" />
+            <asp:Button ID="btnSearch" runat="server" Text="Search" Enabled="False" />
             <br />
             <br />
             <asp:GridView ID="gvUser" runat="server"></asp:GridView>

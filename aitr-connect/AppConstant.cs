@@ -20,6 +20,7 @@ namespace aitr_connect
         {
             public const string strDefaultPage = "~/Default.aspx";
             public const string strSearchPage = "~/Search.aspx";
+            public const string strRegisterPage = "~/Register.aspx";
         }
     }
 }

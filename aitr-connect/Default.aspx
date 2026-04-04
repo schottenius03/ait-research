@@ -15,7 +15,7 @@
             <asp:Button ID="btnSearch" runat="server" Text="Search repsondents" OnClick="btnSearch_Click" />
             <br />
             <br />
-            <asp:Button ID="btnRegister" runat="server" Text="Register respondent" />
+            <asp:Button ID="btnRegister" runat="server" Text="Register respondent" OnClick="btnRegister_Click" />
             <br />
             <br />
             <asp:Button ID="btnSurvey" runat="server" Text="Survey" />
