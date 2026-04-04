@@ -42,22 +42,24 @@ namespace aitr_connect
             {
                 myconn.Open();
 
-                SqlCommand myCmd = new SqlCommand("SELECT * FROM TabUser", myconn);
+                SqlCommand myCmd = new SqlCommand("SELECT * FROM Respondent", myconn);
                 SqlDataReader reader = myCmd.ExecuteReader();
 
                 DataTable dt = new DataTable();
-                dt.Columns.Add("User ID", typeof(Int32));
-                dt.Columns.Add("Username", typeof(String));
-                dt.Columns.Add("Password", typeof(String));
-                dt.Columns.Add("User Level", typeof(Int32));
+                dt.Columns.Add("Firstname", typeof(String));
+                dt.Columns.Add("Surname", typeof(String));
+                dt.Columns.Add("Date of Birth", typeof(DateTime));
+                dt.Columns.Add("Phone Number", typeof(String));
+                dt.Columns.Add("Email", typeof(String));
 
                 while (reader.Read())
                 {
                     DataRow row = dt.NewRow();
-                    row["User ID"] = reader["UID"];
-                    row["Username"] = reader["UserName"];
-                    row["Password"] = reader["Password"];
-                    row["User Level"] = reader["UserLevel"];
+                    row["Firstname"] = reader["firstName"];
+                    row["Surname"] = reader["lastName"];
+                    row["Date of Birth"] = reader["dateOfBirth"]; 
+                    row["Phone Number"] = reader["phoneNumber"];
+                    row["Email"] = reader["email"];
 
                     dt.Rows.Add(row);
                 }
