@@ -159,15 +159,33 @@ namespace aitr_connect
                             LoadListOptions(questionID, cbl, myconn);
                             phQuestionArea.Controls.Add(cbl);
 
-                            // Add Custom Validation for CheckBoxList (Server-side check)
+                            // custom validation
                             CustomValidator cvCbl = new CustomValidator();
                             cvCbl.ID = "cvCbl";
+                            // inline event handler to validate on server number of ticked boxes 
                             cvCbl.ServerValidate += (source, args) => {
-                                bool anySelected = false;
-                                foreach (ListItem li in cbl.Items) { if (li.Selected) anySelected = true; }
-                                args.IsValid = anySelected;
+                                int selectedCount = 0;
+                                foreach (ListItem li in cbl.Items) { if (li.Selected) selectedCount++; }
+
+                                if (questionID == 6)
+                                {
+                                    // maxLimit 4 Q6
+                                    args.IsValid = (selectedCount >= 1 && selectedCount <= 4);
+                                    cvCbl.ErrorMessage = "Please select a maximum of 4 options.";
+                                }
+                                else if (questionID == 8)
+                                {
+                                    // Second limit: Max 2 Q8
+                                    args.IsValid = (selectedCount >= 1 && selectedCount <= 2);
+                                    cvCbl.ErrorMessage = "Please select a maximum of 2 options.";
+                                }
+                                else
+                                {
+                                    // Default: at least one must be selected
+                                    args.IsValid = (selectedCount >= 1);
+                                    cvCbl.ErrorMessage = "Please select at least one checkbox.";
+                                }
                             };
-                            cvCbl.ErrorMessage = "Please select at least one checkbox.";
                             cvCbl.ForeColor = System.Drawing.Color.Red;
                             cvCbl.Display = ValidatorDisplay.Dynamic;
                             phQuestionArea.Controls.Add(cvCbl);
@@ -210,13 +228,11 @@ namespace aitr_connect
             }
             catch (Exception ex)
             {
-                // Detta stoppar ErrorPage-redirecten och visar felet på skärmen
-                Response.Write("<div style='color:red; background:white; padding:20px; border:5px solid red;'>");
-                Response.Write("<h2>Hittade felet!</h2>");
-                Response.Write("<b>Meddelande:</b> " + ex.Message + "<br/><br/>");
-                Response.Write("<b>Rad i koden:</b> " + ex.StackTrace);
-                Response.Write("</div>");
-                Response.End();
+                // set errorMessage
+                Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred while loading data. Please try again later.";
+
+                // redirect to ErrorPage
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
 
@@ -287,7 +303,7 @@ namespace aitr_connect
 
                     // refresh its own page
                     Response.Redirect(Request.RawUrl, false); // prevent ThreadAbortion
-                    Context.ApplicationInstance.CompleteRequest(); 
+                    Context.ApplicationInstance.CompleteRequest(); // Avslutar begäran snyggt
                 }
                 catch (Exception ex)
                 {
