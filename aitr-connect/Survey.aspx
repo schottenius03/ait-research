@@ -15,6 +15,12 @@
             <asp:Label ID="lblTitle" runat="server" Text="Survey" Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
             <br />
             <br />
+            <asp:Label ID="lblQuestion" runat="server" Text="Loading question..."></asp:Label>
+            <br />
+            <br />
+            <asp:RadioButtonList ID="rblInput" runat="server"></asp:RadioButtonList>
+            <br />
+            <asp:Button ID="btnNextQuestion" runat="server" Text="Next" OnClick="btnNextQuestion_Click" />
         </div>
     </form>
 </body>
