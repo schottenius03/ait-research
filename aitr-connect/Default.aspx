@@ -4,7 +4,7 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title></title>
+    <title>AIT Research</title>
 </head>
 <body>
     <form id="form1" runat="server">
@@ -18,7 +18,7 @@
             <asp:Button ID="btnRegister" runat="server" Text="Register respondent" OnClick="btnRegister_Click" />
             <br />
             <br />
-            <asp:Button ID="btnSurvey" runat="server" Text="Survey" />
+            <asp:Button ID="btnSurvey" runat="server" Text="Survey" OnClick="btnSurvey_Click" />
         </div>
     </form>
 </body>

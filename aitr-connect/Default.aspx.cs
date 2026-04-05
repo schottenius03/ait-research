@@ -23,5 +23,10 @@ namespace aitr_connect
         {
             Response.Redirect(AppConstant.PageCatalog.strRegisterPage);
         }
+
+        protected void btnSurvey_Click(object sender, EventArgs e)
+        {
+            Response.Redirect(AppConstant.PageCatalog.strSurveyPage);
+        }
     }
 }
