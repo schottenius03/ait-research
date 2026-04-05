@@ -28,6 +28,7 @@ namespace aitr_connect
         {
             // activate session
             Session[AppConstant.SessionNameList.strIsSurveyActive] = true;
+
             // send to survey 
             Response.Redirect(AppConstant.PageCatalog.strSurveyPage);
         }
