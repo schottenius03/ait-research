@@ -9,6 +9,17 @@ namespace aitr_connect
 {
     public partial class Survey : System.Web.UI.Page
     {
+        protected override void OnInit(EventArgs e)
+        {
+            // check if session is active
+            if (Session["isSurveyActive"] == null || (bool)Session["isSurveyActive"] == false)
+            {
+                // redirect to Default 
+                Response.Redirect("Default.aspx");
+                return;
+            }
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
             // no validation needed for back button
@@ -62,6 +73,9 @@ namespace aitr_connect
 
         protected void btnBackToDefault_Click(object sender, EventArgs e)
         {
+            // delete session 
+            Session.Abandon();
+            // redirect to default 
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }
 
