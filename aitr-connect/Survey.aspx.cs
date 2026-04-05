@@ -11,19 +11,19 @@ namespace aitr_connect
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!IsPostBack)
+            // using classic validation
+            this.UnobtrusiveValidationMode = System.Web.UI.UnobtrusiveValidationMode.None;
+
+            for (int i = 1; i <= 3; i++)
             {
+                ListItem listItem = new ListItem();
+                listItem.Text = "Option " + i.ToString();
 
-                for (int i = 1; i <= 5; i++)
-                {
-                    ListItem listItem = new ListItem();
-                    listItem.Text = "Option " + i.ToString();
+                rblInput.Items.Add(listItem);
+                listItem.Value = "" + i;
 
-                    rblInput.Items.Add(listItem);
-                    listItem.Value = "" + i;
-
-                }
             }
+          
         }
 
         protected void btnBackToDefault_Click(object sender, EventArgs e)
@@ -33,7 +33,7 @@ namespace aitr_connect
 
         protected void btnNextQuestion_Click(object sender, EventArgs e)
         {
-            // radio buttons
+            // radio list button logic 
             if (rblInput.SelectedItem != null)
             {
                 Response.Write("<b>Selected item from RadioButtonLIst control:</b><br/>");

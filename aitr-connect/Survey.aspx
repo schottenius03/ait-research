@@ -21,6 +21,16 @@
             <asp:RadioButtonList ID="rblInput" runat="server"></asp:RadioButtonList>
             <br />
             <asp:Button ID="btnNextQuestion" runat="server" Text="Next" OnClick="btnNextQuestion_Click" />
+
+            <!-- Validation -->
+            <asp:RequiredFieldValidator
+                ID="RequiredGender"
+                runat="server" 
+                ErrorMessage="Gender is required"
+                ControlToValidate="rblInput"
+                Display="Static">
+            </asp:RequiredFieldValidator>
+
         </div>
     </form>
 </body>
