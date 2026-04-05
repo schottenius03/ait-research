@@ -27,7 +27,7 @@ namespace aitr_connect
         protected void btnSurvey_Click(object sender, EventArgs e)
         {
             // activate session
-            Session["isSurveyActive"] = true;
+            Session[AppConstant.SessionNameList.strIsSurveyActive] = true;
             // send to survey 
             Response.Redirect(AppConstant.PageCatalog.strSurveyPage);
         }

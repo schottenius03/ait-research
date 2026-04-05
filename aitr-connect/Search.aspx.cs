@@ -10,33 +10,20 @@ using System.Web.UI.WebControls;
 
 namespace aitr_connect
 {
-    public partial class Search : System.Web.UI.Page
+    public partial class Search : PageBase
     {
+        // run PageBase before getting all the objects 
+        protected void Page_Init(object sender, EventArgs e)
+        {
+            if (!PageValid())
+            {
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
+        }
         protected void Page_Load(object sender, EventArgs e)
         {
-            // tea - straw - connect - poke - get soda - consume
-            String myConnectionString = ConfigurationManager.ConnectionStrings["KailingConnectionString"].ConnectionString;
-
-
-            if (myConnectionString.ToUpper().Equals("DEV"))
-            {
-                myConnectionString = AppConstant.Connection.DevConnectionString;
-            }
-            else if (myConnectionString.ToUpper().Equals("TEST"))
-            {
-                myConnectionString = AppConstant.Connection.TestConnectionString;
-            }
-            else if (myConnectionString.ToUpper().Equals("PROD"))
-            {
-                myConnectionString = AppConstant.Connection.ProdConnectionString;
-            }
-            else
-            {
-                myConnectionString = "";
-            }
-
-            SqlConnection myconn = new SqlConnection();
-            myconn.ConnectionString = myConnectionString;
+            // get enviroment from PageBase
+            SqlConnection myconn = new SqlConnection(this.CurrentConnectionString);
 
             try
             {
@@ -69,24 +56,13 @@ namespace aitr_connect
 
                 myconn.Close();
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex) // getting all exceptions 
             {
-                lblTitle.Text = "Interal operation error!!! Contact admin";
-            }
+                // set errorMessage
+                Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred while loading data. Please try again later.";
 
-            catch (ConfigurationErrorsException ex)
-            {
-                lblTitle.Text = "Interal configuration error!!! Contact admin";
-            }
-
-            catch (SqlException ex)
-            {
-                lblTitle.Text = "Database general error!!! Try again later.";
-            }
-
-            catch (Exception ex)
-            {
-                lblTitle.Text = "General system error!!! Try again later.";
+                // redirect to ErrorPage
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
 
