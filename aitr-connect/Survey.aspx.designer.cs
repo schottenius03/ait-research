@@ -42,22 +42,13 @@ namespace aitr_connect
         protected global::System.Web.UI.WebControls.Label lblTitle;
 
         /// <summary>
-        /// lblQuestion control.
+        /// phQuestionArea control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblQuestion;
-
-        /// <summary>
-        /// rblInput control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RadioButtonList rblInput;
+        protected global::System.Web.UI.WebControls.PlaceHolder phQuestionArea;
 
         /// <summary>
         /// btnNextQuestion control.
@@ -67,14 +58,5 @@ namespace aitr_connect
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnNextQuestion;
-
-        /// <summary>
-        /// RequiredGender control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator RequiredGender;
     }
 }
