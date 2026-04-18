@@ -29,6 +29,9 @@ namespace aitr_connect
             // activate session
             Session[AppConstant.SessionNameList.strIsSurveyActive] = true;
 
+            // init question order index
+            Session[AppConstant.SessionNameList.strQuestionIndex] = 1;
+
             // send to survey 
             Response.Redirect(AppConstant.PageCatalog.strSurveyPage);
         }

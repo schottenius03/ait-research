@@ -115,6 +115,7 @@
     <Compile Include="Survey.aspx.designer.cs">
       <DependentUpon>Survey.aspx</DependentUpon>
     </Compile>
+    <Compile Include="SurveyQuestion.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -87,13 +87,13 @@ namespace aitr_connect
         protected global::System.Web.UI.WebControls.Label lblDOB;
 
         /// <summary>
-        /// TextBox1 control.
+        /// tbxDOB control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox TextBox1;
+        protected global::System.Web.UI.WebControls.TextBox tbxDOB;
 
         /// <summary>
         /// lblPhoneNr control.
@@ -105,31 +105,13 @@ namespace aitr_connect
         protected global::System.Web.UI.WebControls.Label lblPhoneNr;
 
         /// <summary>
-        /// TextBox2 control.
+        /// tbxPhoneNr control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox TextBox2;
-
-        /// <summary>
-        /// lblEmail control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblEmail;
-
-        /// <summary>
-        /// TextBox3 control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox TextBox3;
+        protected global::System.Web.UI.WebControls.TextBox tbxPhoneNr;
 
         /// <summary>
         /// btnRegister control.

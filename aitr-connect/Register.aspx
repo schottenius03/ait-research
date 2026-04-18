@@ -22,13 +22,10 @@
             <asp:TextBox ID="tbxLastName" runat="server"></asp:TextBox>
             <br />
             <asp:Label ID="lblDOB" runat="server" Text="Date of birth: "></asp:Label>
-            <asp:TextBox ID="TextBox1" runat="server"></asp:TextBox>
+            <asp:TextBox ID="tbxDOB" runat="server"></asp:TextBox>
             <br />
             <asp:Label ID="lblPhoneNr" runat="server" Text="Phone number: "></asp:Label>
-            <asp:TextBox ID="TextBox2" runat="server"></asp:TextBox>
-             <br />
-            <asp:Label ID="lblEmail" runat="server" Text="Email: "></asp:Label>
-            <asp:TextBox ID="TextBox3" runat="server"></asp:TextBox>
+            <asp:TextBox ID="tbxPhoneNr" runat="server"></asp:TextBox>
             <br />
             <br />
             <asp:Button ID="btnRegister" runat="server" Text="Register now" Enabled="False" />

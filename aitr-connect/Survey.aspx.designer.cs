@@ -51,6 +51,15 @@ namespace aitr_connect
         protected global::System.Web.UI.WebControls.PlaceHolder phQuestionArea;
 
         /// <summary>
+        /// btnSkip control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.LinkButton btnSkip;
+
+        /// <summary>
         /// btnNextQuestion control.
         /// </summary>
         /// <remarks>
