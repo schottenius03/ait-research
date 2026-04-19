@@ -27,7 +27,8 @@
             <asp:Button ID="btnBackToDefault" runat="server" Text="< Go back" BorderStyle="None" BackColor="White" BorderWidth="0" OnClick="btnBackToDefault_Click" />
             <br />
             <br />
-            <asp:Label ID="lblTitle" runat="server" Text="Survey" Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
+            <asp:Label ID="lblTitle" runat="server" Text="Question " Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
+            <asp:Label ID="lblQuestionNumber" runat="server" Text="" Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
             <br />
             <br />
 

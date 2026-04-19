@@ -104,13 +104,16 @@ namespace aitr_connect
                             MaxSelections = Convert.ToInt32(reader["maxSelections"])
                         };
                     }
-                } 
+                }
 
                 if (currentQ != null)
                 {
                     // save to sessions
                     Session["CurrentQuestionID"] = currentQ.ID;
                     Session["CurrentQuestionType"] = currentQ.Type;
+
+                    // label title to id number 
+                    lblQuestionNumber.Text = currentQ.ID.ToString();
 
                     // assign questionText from DB to label 
                     lblQuestion.Text = currentQ.Text;
@@ -169,7 +172,8 @@ namespace aitr_connect
 
                             // custom validation
                             CustomValidator cvCbl = new CustomValidator { ID = "cvCbl" };
-                            cvCbl.ServerValidate += (source, args) => {
+                            cvCbl.ServerValidate += (source, args) =>
+                            {
                                 int selectedCount = 0;
                                 foreach (ListItem li in cbl.Items) { if (li.Selected) selectedCount++; }
                                 args.IsValid = (selectedCount >= minLimit && selectedCount <= maxLimit);
@@ -292,32 +296,16 @@ namespace aitr_connect
                     int sessionID = Convert.ToInt32(Session["CurrentSessionID"]);
                     int questionID = Convert.ToInt32(Session["CurrentQuestionID"]);
                     string questionType = Session["CurrentQuestionType"].ToString();
+                    int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
 
                     // get input control
                     Control myControl = phQuestionArea.FindControl("ctrlInput");
 
                     // determine datatype and set options and save choice by respondent
-                    if (questionType == "RadioButton" || questionType == "DropDown")
+                    if (myControl is ListControl listControl)
                     {
-                        ListControl list = (ListControl)myControl;
-                        if (list.SelectedItem != null)
-                        {
-                            SaveAnswer(sessionID, questionID, list.SelectedValue, null, myconn);
-                        }
-                    }
-                    else if (questionType == "TextBox")
-                    {
-                        TextBox txt = (TextBox)myControl;
-                        string answerText = txt.Text;
-
-                        // save to respondent
-                        SaveAnswer(sessionID, questionID, null, answerText, myconn);
-                    }
-                    else if (questionType == "CheckBox")
-                    {
-                        CheckBoxList cbl = (CheckBoxList)myControl;
-                        // loop through all 
-                        foreach (ListItem item in cbl.Items)
+                        // Handles RadioButton, DropDown and CheckBox logic in one loop
+                        foreach (ListItem item in listControl.Items)
                         {
                             if (item.Selected)
                             {
@@ -325,9 +313,32 @@ namespace aitr_connect
                             }
                         }
                     }
+                    else if (myControl is TextBox txt)
+                    {
+                        string answerText = txt.Text;
+                        SaveAnswer(sessionID, questionID, null, answerText, myconn);
+                    }
 
-                    // next question
-                    int nextOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]) + 1;
+                    int nextOrder = -1;
+
+                    // Simplified logic: Find the next available displayOrder that is active
+                    string sqlGetNext = @"SELECT MIN(sq.displayOrder) 
+                                 FROM SurveyQuestion sq 
+                                 WHERE sq.surveyID = 1 
+                                 AND sq.displayOrder > @currentOrder 
+                                 AND sq.isActive = 1";
+
+                    using (SqlCommand cmdNext = new SqlCommand(sqlGetNext, myconn))
+                    {
+                        cmdNext.Parameters.AddWithValue("@currentOrder", currentOrder);
+                        object result = cmdNext.ExecuteScalar();
+
+                        if (result != DBNull.Value && result != null)
+                        {
+                            nextOrder = Convert.ToInt32(result);
+                        }
+                    }
+
                     Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
 
                     // refresh its own page
@@ -336,12 +347,12 @@ namespace aitr_connect
                 }
                 catch (Exception ex)
                 {
-                    Session[AppConstant.SessionNameList.strErroMessage] = "Error saving answer: " + ex.Message;
+                    // set errorMessage
+                    Session[AppConstant.SessionNameList.strErroMessage] = "Error: " + ex.Message;
                     Response.Redirect(AppConstant.PageCatalog.strErrorPage);
                 }
                 finally
                 {
-                    // always close connection once survey is completed 
                     if (myconn.State == ConnectionState.Open) { myconn.Close(); }
                 }
             }
@@ -373,6 +384,7 @@ namespace aitr_connect
         /// </summary>
         private void LoadListOptions(int qID, ListControl control, SqlConnection conn)
         {
+
             // query to get options for question
             string sqlOptions = "SELECT optionID, optionText FROM [Option] WHERE questionID = @qID AND isActive = 1";
             SqlCommand cmdOptions = new SqlCommand(sqlOptions, conn);
@@ -400,9 +412,39 @@ namespace aitr_connect
 
         protected void btnSkip_Click(object sender, EventArgs e)
         {
-            // skip to next question by updating questionIndex and loading website
-            int nextOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]) + 1;
+            int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+            int nextOrder = -1;
+
+            using (SqlConnection myconn = new SqlConnection(this.CurrentConnectionString))
+            {
+                myconn.Open();
+
+                // Vi letar efter den MINSTA displayOrder som är STÖRRE än nuvarande,
+                // men vi exkluderar alla frågor som finns med i QuestionRule som 'childQuestionID'.
+                // På så sätt hittar vi nästa fråga som inte är en sub-question.
+                string sqlGetNextMain = @"
+            SELECT MIN(sq.displayOrder) 
+            FROM SurveyQuestion sq 
+            WHERE sq.surveyID = 1 
+            AND sq.displayOrder > @currentOrder 
+            AND sq.isActive = 1
+            AND sq.questionID NOT IN (SELECT childQuestionID FROM QuestionRule)";
+
+                using (SqlCommand cmdNext = new SqlCommand(sqlGetNextMain, myconn))
+                {
+                    cmdNext.Parameters.AddWithValue("@currentOrder", currentOrder);
+                    object result = cmdNext.ExecuteScalar();
+
+                    if (result != DBNull.Value && result != null)
+                    {
+                        nextOrder = Convert.ToInt32(result);
+                    }
+                }
+            }
+
+            // Uppdatera index. Om nextOrder är -1 kommer Page_Load hantera att enkäten är slut.
             Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
+
             Response.Redirect(Request.RawUrl);
         }
     }
