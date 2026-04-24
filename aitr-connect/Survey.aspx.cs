@@ -6,16 +6,16 @@ using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using aitr_connect.Services;
 
 namespace aitr_connect
 {
     public partial class Survey : PageBase
     {
+        // create instance of the service 
+        private SurveyService surveyService = new SurveyService();
         protected void Page_Init(object sender, EventArgs e)
         {
-            // create instance 
-            var surveyService = new aitr_connect.Services.SurveyService();
-
             // verify session 
             if (!surveyService.IsSurveyAccessValid(Session[AppConstant.SessionNameList.strIsSurveyActive]))
             {
@@ -37,9 +37,6 @@ namespace aitr_connect
 
             try
             {
-                // create instance 
-                var surveyService = new aitr_connect.Services.SurveyService();
-
                 // create new respondent and session 
                 if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
                 {
@@ -57,13 +54,85 @@ namespace aitr_connect
                     return;
                 }
 
-                // --- Här fortsätter vi städa nästa gång ---
+                // get current order from session
+                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+
+                // fetch the question through the service
+                aitr_connect.Services.SurveyQuestion currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder);
+
+                if (currentQ != null)
+                {
+                    // store current question info in session for logic later (e.g. in btnNext_Click)
+                    Session[AppConstant.SessionNameList.strQuestionID] = currentQ.ID;
+                    Session[AppConstant.SessionNameList.strQuestionType] = currentQ.Type;
+
+                    // UI logic: setup labels
+                    lblQuestionNumber.Text = currentQ.ID.ToString();
+
+                    // create and add the question text label
+                    Label lblQuestion = new Label { ID = "lblQuestion", Text = currentQ.Text };
+                    phQuestionArea.Controls.Add(lblQuestion);
+                    phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
+
+                    // present the question in it's form 
+                    var options = surveyService.GetOptionsByQuestionID(this.CurrentConnectionString, currentQ.ID);
+
+                    switch (currentQ.Type)
+                    {
+                        case "RadioButton":
+                            // create list 
+                            RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
+
+                            // loop all alternatives
+                            foreach (var opt in options)
+                            {
+                                rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                            }
+                            phQuestionArea.Controls.Add(rbl);
+                            break;
+
+                        case "CheckBox":
+                            CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
+                            foreach (var opt in options)
+                            {
+                                cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                            }
+                            phQuestionArea.Controls.Add(cbl);
+                            break;
+
+                        case "DropDown":
+                            DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
+                            ddl.Items.Add(new ListItem("-- Select an option --", "0"));
+                            foreach (var opt in options)
+                            {
+                                ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                            }
+                            phQuestionArea.Controls.Add(ddl);
+                            break;
+
+                        case "TextBox":
+                            // create textBox directly
+                            TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
+                            phQuestionArea.Controls.Add(txt);
+                            break;
+                    }
+                }
+                else
+                {
+                    // clean sessions when survey is done
+                    Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
+                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+                }
+
             }
             catch (Exception ex)
             {
                 Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred: " + ex.Message;
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
+        }
+    }
+}
 
 
 
@@ -72,13 +141,14 @@ namespace aitr_connect
 
 
 
- 
 
 
 
 
 
 
+
+/*
 
 
 
@@ -463,4 +533,4 @@ namespace aitr_connect
             Response.Redirect(Request.RawUrl);
         }
     }
-}
+} */

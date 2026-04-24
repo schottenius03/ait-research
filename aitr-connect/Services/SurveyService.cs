@@ -14,6 +14,27 @@ namespace aitr_connect.Services
         public int RespondentID { get; set; }
         public int SessionID { get; set; }
     }
+
+    /// <summary>
+    /// Class to store values for current question 
+    /// </summary>
+    public class SurveyQuestion
+    {
+        public int ID { get; set; }
+        public string Text { get; set; }
+        public string Type { get; set; }
+        public int MinSelections { get; set; }
+        public int MaxSelections { get; set; }
+    }
+
+    /// <summary>
+    /// Class to store the respondent's answer
+    /// </summary>
+    public class QuestionOption
+    {
+        public int OptionID { get; set; }
+        public string OptionText { get; set; }
+    }
     public class SurveyService
     {
 
@@ -62,6 +83,73 @@ namespace aitr_connect.Services
                     SessionID = sID
                 };
             }
+        }
+
+        /// <summary>
+        /// Gets a specific question from the DB based on its display order.
+        /// </summary>
+        public SurveyQuestion GetQuestionByOrder(string connectionString, int currentOrder)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                // get question based on displayOrder
+                string sql = @"SELECT q.questionID, q.questionText, q.questionType, q.minSelections, q.maxSelections 
+                               FROM Question q 
+                               JOIN SurveyQuestion sq ON q.questionID = sq.questionID 
+                               WHERE sq.displayOrder = @order AND sq.surveyID = 1 AND sq.isActive = 1";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@order", currentOrder);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new SurveyQuestion
+                            {
+                                ID = Convert.ToInt32(reader["questionID"]),
+                                Text = reader["questionText"].ToString(),
+                                Type = reader["questionType"].ToString(),
+                                MinSelections = Convert.ToInt32(reader["minSelections"]),
+                                MaxSelections = Convert.ToInt32(reader["maxSelections"])
+                            };
+                        }
+                    }
+                }
+            }
+            return null; 
+        }
+
+        /// <summary>
+        /// Gets all available options for a specific question.
+        /// </summary>
+        public List<QuestionOption> GetOptionsByQuestionID(string connectionString, int questionID)
+        {
+            List<QuestionOption> options = new List<QuestionOption>();
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string sql = "SELECT optionID, optionText FROM QuestionOption WHERE questionID = @qID AND isActive = 1";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@qID", questionID);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            options.Add(new QuestionOption
+                            {
+                                OptionID = Convert.ToInt32(reader["optionID"]),
+                                OptionText = reader["optionText"].ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return options;
         }
     }
 }
