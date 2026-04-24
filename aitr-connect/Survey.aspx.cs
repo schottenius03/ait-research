@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -62,7 +63,7 @@ namespace aitr_connect
         {
             if (ValidateSelections())
             {
-                SaveUserAnswer();
+                SaveRespondentAnswer();
                 MoveToNextQuestion();
             }
         }
@@ -88,46 +89,51 @@ namespace aitr_connect
         /// <summary>
         /// Checks if the user's selection meets the min and max requirements from the database.
         /// </summary>
+        // Inuti ValidateSelections i Survey.aspx.cs
         private bool ValidateSelections()
         {
             int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
-            string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
             Control ctl = phQuestionArea.FindControl("ctlOptions");
 
-            if (ctl == null) return true;
-
-            // get min and max selections of current question
-            var req = surveyService.GetQuestionRequirements(this.CurrentConnectionString, questionID);
             int count = 0;
+            string textAnswer = null;
 
-            // get selected answers from respondent
-            if (type == "RadioButton" && !string.IsNullOrEmpty(((RadioButtonList)ctl).SelectedValue)) count = 1;
-            else if (type == "DropDown" && ((DropDownList)ctl).SelectedValue != "0") count = 1;
-            else if (type == "TextBox" && !string.IsNullOrWhiteSpace(((TextBox)ctl).Text)) count = 1;
-            else if (type == "CheckBox")
+            // collect data from controls
+            if (ctl is RadioButtonList rbl)
             {
-                foreach (ListItem item in ((CheckBoxList)ctl).Items) if (item.Selected) count++;
+                if (!string.IsNullOrEmpty(rbl.SelectedValue)) count = 1;
+            }
+            else if (ctl is CheckBoxList cbl)
+            {
+                foreach (ListItem item in cbl.Items) if (item.Selected) count++;
+            }
+            else if (ctl is DropDownList ddl)
+            {
+                if (ddl.SelectedValue != "0") count = 1;
+            }
+            else if (ctl is TextBox txt)
+            {
+                textAnswer = txt.Text;
+                if (!string.IsNullOrWhiteSpace(textAnswer)) count = 1;
             }
 
-            // check if restrictions of selections match respondents answer
-            if (count < req.Min)
+            var result = surveyService.ValidateUserSubmission(this.CurrentConnectionString, questionID, count, textAnswer);
+
+            if (!result.IsValid)
             {
-                lblErrorMessage.Text = $"Please select at least {req.Min} option(s).";
+                lblErrorMessage.Text = result.ErrorMessage;
+                lblErrorMessage.Visible = true;
                 return false;
             }
-            if (count > req.Max)
-            {
-                lblErrorMessage.Text = $"You can select a maximum of {req.Max} options.";
-                return false;
-            }
 
+            lblErrorMessage.Visible = false;
             return true;
         }
 
         /// <summary>
         /// Reads values from UI controls and sends them to the Service layer for storage.
         /// </summary>
-        private void SaveUserAnswer()
+        private void SaveRespondentAnswer()
         {
             int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
             int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
@@ -149,17 +155,21 @@ namespace aitr_connect
                     if (ddl.SelectedValue != "0")
                         surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
                     break;
-                case "TextBox":
-                    var txt = (TextBox)ctl;
-                    if (!string.IsNullOrWhiteSpace(txt.Text))
-                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
-                    break;
                 case "CheckBox":
                     var cbl = (CheckBoxList)ctl;
                     foreach (ListItem item in cbl.Items)
                         if (item.Selected)
                             surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
                     break;
+                case string t when t.StartsWith("TextBox"):
+                    var txt = (TextBox)ctl;
+                    if (!string.IsNullOrWhiteSpace(txt.Text))
+                    {
+                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
+                    }
+                    break;
+                default:
+                    throw new NotSupportedException($"Question type '{type}' is not supported by the system yet.");
             }
         }
 
@@ -233,7 +243,7 @@ namespace aitr_connect
                         phQuestionArea.Controls.Add(ddl);
                         break;
 
-                    case "TextBox":
+                    case string t when t.StartsWith("TextBox"):
                         TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
                         phQuestionArea.Controls.Add(txt);
                         break;

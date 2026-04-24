@@ -35,6 +35,14 @@ namespace aitr_connect.Services
         public int OptionID { get; set; }
         public string OptionText { get; set; }
     }
+    /// <summary>
+    /// Class to store Validation values
+    /// </summary>
+    public class ValidationResult
+    {
+        public bool IsValid { get; set; }
+        public string ErrorMessage { get; set; }
+    }
     public class SurveyService
     {
 
@@ -260,6 +268,81 @@ namespace aitr_connect.Services
                     return (result != null && result != DBNull.Value) ? (int?)Convert.ToInt32(result) : null;
                 }
             }
+        }
+
+        /// <summary>
+        /// Validating certain requirments needed from DB
+        /// </summary>
+        /// <param name="connString"></param>
+        /// <param name="qID"></param>
+        /// <param name="count"></param>
+        /// <param name="textAnswer"></param>
+        /// <returns></returns>
+        public ValidationResult ValidateUserSubmission(string connString, int qID, int count, string textAnswer)
+        {
+            var req = GetQuestionRequirements(connString, qID);
+
+            // FIX: Hämta frågan direkt på ID istället för Order för att vara säker på att få rätt typ
+            SurveyQuestion question = null;
+            using (SqlConnection conn = new SqlConnection(connString))
+            {
+                conn.Open();
+                string sql = "SELECT questionID, questionType FROM Question WHERE questionID = @qID";
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@qID", qID);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            question = new SurveyQuestion
+                            {
+                                ID = Convert.ToInt32(reader["questionID"]),
+                                Type = reader["questionType"].ToString()
+                            };
+                        }
+                    }
+                }
+            }
+
+            if (question == null) return new ValidationResult { IsValid = true };
+
+            // compare min max 
+            if (count < req.Min)
+                return new ValidationResult { IsValid = false, ErrorMessage = $"Please select at least {req.Min} options." };
+            if (count > req.Max)
+                return new ValidationResult { IsValid = false, ErrorMessage = $"Maximum {req.Max} options allowed." };
+
+            // specific requirements for textBox
+            if (!string.IsNullOrEmpty(textAnswer))
+            {
+                switch (question.Type)
+                {
+                    case "TextBox_Alpha":
+                        // Denna Regex kollar att det ENDAST är bokstäver
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^[a-zA-Z\s\-]+$"))
+                        {
+                            return new ValidationResult { IsValid = false, ErrorMessage = "Suburb name can only contain letters." };
+                        }
+                        break;
+
+                    case "TextBox_Numeric_4":
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^\d{4}$"))
+                        {
+                            return new ValidationResult { IsValid = false, ErrorMessage = "Postcode must be exactly 4 digits." };
+                        }
+                        break;
+
+                    case "TextBox_Email":
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$"))
+                        {
+                            return new ValidationResult { IsValid = false, ErrorMessage = "Please enter a valid email (e.g. name@domain.com). Numbers are not allowed in the domain suffix." };
+                        }
+                        break;
+                }
+            }
+
+            return new ValidationResult { IsValid = true };
         }
     }
 }
