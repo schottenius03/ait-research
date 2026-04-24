@@ -185,6 +185,15 @@ namespace aitr_connect
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
+
+        protected void btnBackToDefault_Click(object sender, EventArgs e)
+        {
+            // delete all sessions 
+            Session.Abandon();
+
+            // redirect to default page
+            Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+        }
     }
 }
 
