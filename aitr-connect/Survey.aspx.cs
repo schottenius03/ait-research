@@ -64,15 +64,16 @@ namespace aitr_connect
             if (ValidateSelections())
             {
                 SaveRespondentAnswer();
-                MoveToNextQuestion();
+                MoveToNextQuestion(ignoreRules: false);
             }
         }
 
         protected void btnSkip_Click(object sender, EventArgs e)
         {
+            // Vi validerar fortfarande (ifall de skrivit felaktig text i en TextBox innan de klickade skip)
             if (ValidateSelections())
             {
-                MoveToNextQuestion();
+                MoveToNextQuestion(ignoreRules: true);
             }
         }
 
@@ -98,7 +99,7 @@ namespace aitr_connect
             int count = 0;
             string textAnswer = null;
 
-            // collect data from controls
+            // 
             if (ctl is RadioButtonList rbl)
             {
                 if (!string.IsNullOrEmpty(rbl.SelectedValue)) count = 1;
@@ -146,6 +147,7 @@ namespace aitr_connect
             switch (type)
             {
                 case "RadioButton":
+                case "RadioButton_Register": 
                     var rbl = (RadioButtonList)ctl;
                     if (!string.IsNullOrEmpty(rbl.SelectedValue))
                         surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
@@ -155,7 +157,7 @@ namespace aitr_connect
                     if (ddl.SelectedValue != "0")
                         surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
                     break;
-                case "CheckBox":
+                case string t when t.StartsWith("CheckBox"):
                     var cbl = (CheckBoxList)ctl;
                     foreach (ListItem item in cbl.Items)
                         if (item.Selected)
@@ -176,28 +178,108 @@ namespace aitr_connect
         /// <summary>
         /// Handles navigation to the next main question by updating session and reloading the page.
         /// </summary>
-        private void MoveToNextQuestion()
+        /// <param name="ignoreRules"></param>
+        private void MoveToNextQuestion(bool ignoreRules = false)
         {
             try
             {
-                // get current question
                 int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
 
-                // get next question that is not a sub question
-                int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
+                // create list to store all sub questions
+                List<int> triggeredOrders = new List<int>();
 
-                // update current index
-                Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
+                if (!ignoreRules)
+                {
+                    Control ctl = phQuestionArea.FindControl("ctlOptions");
+                    if (ctl is CheckBoxList cbl)
+                    {
+                        foreach (ListItem item in cbl.Items)
+                        {
+                            if (item.Selected)
+                            {
+                                int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(item.Value), 1);
+                                // add to list if not already exist
+                                if (order.HasValue && !triggeredOrders.Contains(order.Value))
+                                {
+                                    triggeredOrders.Add(order.Value);
+                                }
+                            }
+                        }
+                    }
+                    // handle radiobutton/dropdwon only trigger once
+                    else if (ctl is ListControl list && !string.IsNullOrEmpty(list.SelectedValue))
+                    {
+                        int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(list.SelectedValue), 1);
+                        if (order.HasValue) triggeredOrders.Add(order.Value);
+                    }
+                }
 
-                // reload page to show updated question
-                Response.Redirect(Request.RawUrl, false);
-                Context.ApplicationInstance.CompleteRequest();
+                if (triggeredOrders.Count > 0)
+                {
+                    // sort saved triggered question in order 
+                    triggeredOrders.Sort();
+
+                    // save the rest to a list if any ese 
+                    int firstNext = triggeredOrders[0];
+                    triggeredOrders.RemoveAt(0);
+
+                    // only save in session if any triggers are left
+                    Session["QueuedQuestions"] = triggeredOrders.Count > 0 ? triggeredOrders : null;
+
+                    ExecuteNavigation(firstNext);
+                }
+                else
+                {
+                    // if no triggers check if any are in the que 
+                    List<int> queue = Session["QueuedQuestions"] as List<int>;
+
+                    if (queue != null && queue.Count > 0)
+                    {
+                        int nextFromQueue = queue[0];
+                        queue.RemoveAt(0);
+
+                        // update que 
+                        Session["QueuedQuestions"] = queue.Count > 0 ? queue : null;
+
+                        ExecuteNavigation(nextFromQueue);
+                    }
+                    else
+                    {
+                        // go to next parent main question
+                        int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
+                        ExecuteNavigation(nextOrder);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Navigation error: " + ex.Message;
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+                HandleNavigationError(ex);
             }
+        }
+
+        /// <summary>
+        /// Find any rules for the question to trigger a sub question
+        /// </summary>
+        /// <param name="ctl"></param>
+        /// <returns></returns>
+        private int? GetTriggeredOrder(Control ctl)
+        {
+            if (ctl is CheckBoxList cbl)
+            {
+                foreach (ListItem item in cbl.Items)
+                {
+                    if (item.Selected)
+                    {
+                        int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(item.Value), 1);
+                        if (order.HasValue) return order;
+                    }
+                }
+            }
+            else if (ctl is ListControl list && !string.IsNullOrEmpty(list.SelectedValue))
+            {
+                return surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(list.SelectedValue), 1);
+            }
+            return null;
         }
 
         private void RenderQuestion(int currentOrder)
@@ -225,12 +307,13 @@ namespace aitr_connect
                 switch (currentQ.Type)
                 {
                     case "RadioButton":
+                    case "RadioButton_Register": 
                         RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
                         foreach (var opt in options) rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
                         phQuestionArea.Controls.Add(rbl);
                         break;
 
-                    case "CheckBox":
+                    case string t when t.StartsWith("CheckBox"):
                         CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
                         foreach (var opt in options) cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
                         phQuestionArea.Controls.Add(cbl);
@@ -248,7 +331,40 @@ namespace aitr_connect
                         phQuestionArea.Controls.Add(txt);
                         break;
                 }
+
+                // hide skip button on register question
+                if (currentQ.Type == "RadioButton_Register")
+                {
+                    btnSkip.Visible = false;
+                }
+                else
+                {
+                    // only show skip button when selection is 0
+                    btnSkip.Visible = (currentQ.MinSelections == 0);
+                }
             }
+        }
+
+        /// <summary>
+        /// redirect to next question 
+        /// </summary>
+        private void ExecuteNavigation(int nextOrder)
+        {
+            // save index to session
+            Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
+
+            // reload page
+            Response.Redirect(Request.RawUrl, false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+
+        /// <summary>
+        /// handle navigation errrors
+        /// </summary>
+        private void HandleNavigationError(Exception ex)
+        {
+            Session[AppConstant.SessionNameList.strErroMessage] = "Navigation error: " + ex.Message;
+            Response.Redirect(AppConstant.PageCatalog.strErrorPage);
         }
     }
 }

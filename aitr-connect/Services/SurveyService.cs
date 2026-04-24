@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
 
 namespace aitr_connect.Services
 {
@@ -252,12 +254,14 @@ namespace aitr_connect.Services
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                // search using trigger for sub question existence
+                // Vi hämtar displayOrder för den följdfråga (child) som är kopplad till det valda alternativet
                 string sql = @"
             SELECT sq.displayOrder 
             FROM QuestionRule qr
             JOIN SurveyQuestion sq ON qr.childQuestionID = sq.questionID
-            WHERE qr.parentOptionID = @oID AND sq.surveyID = @sID AND sq.isActive = 1";
+            WHERE qr.triggerOptionID = @oID 
+            AND sq.surveyID = @sID 
+            AND sq.isActive = 1";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
@@ -282,7 +286,7 @@ namespace aitr_connect.Services
         {
             var req = GetQuestionRequirements(connString, qID);
 
-            // FIX: Hämta frågan direkt på ID istället för Order för att vara säker på att få rätt typ
+            // get next question by ID 
             SurveyQuestion question = null;
             using (SqlConnection conn = new SqlConnection(connString))
             {
@@ -319,7 +323,6 @@ namespace aitr_connect.Services
                 switch (question.Type)
                 {
                     case "TextBox_Alpha":
-                        // Denna Regex kollar att det ENDAST är bokstäver
                         if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^[a-zA-Z\s\-]+$"))
                         {
                             return new ValidationResult { IsValid = false, ErrorMessage = "Suburb name can only contain letters." };
