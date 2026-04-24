@@ -183,7 +183,7 @@ namespace aitr_connect.Services
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
-                    // Koppla parametrarna till SQL-frågan
+                    // map parameters to query
                     cmd.Parameters.AddWithValue("@sID", surveyID);
                     cmd.Parameters.AddWithValue("@currentOrder", currentOrder);
 

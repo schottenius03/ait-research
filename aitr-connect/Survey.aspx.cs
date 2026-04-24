@@ -32,31 +32,43 @@ namespace aitr_connect
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!PageValid() || Session[AppConstant.SessionNameList.strQuestionIndex] == null)
+            try
             {
-                Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-                return;
+                // check if page is valid and index exists
+                if (!PageValid() || Session[AppConstant.SessionNameList.strQuestionIndex] == null)
+                {
+                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
+                }
+
+                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+
+                // if survey is finished
+                if (currentOrder == -1)
+                {
+                    Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
+                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
+                }
+
+                // create session for new respondent
+                if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
+                {
+                    var result = surveyService.CreateNewSurveySession(this.CurrentConnectionString, Request.UserHostAddress);
+                    Session[AppConstant.SessionNameList.strRespondentID] = result.RespondentID;
+                    Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
+                }
+
+                // attempt to render the question
+                RenderQuestion(currentOrder);
             }
-
-            int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-
-            // if survey is finished
-            if (currentOrder == -1)
+            catch (Exception ex)
             {
-                Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
-                Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-                return;
+                // handle any unexpected errors during load or rendering
+                HandleNavigationError(ex);
             }
-
-            // Screate session 
-            if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
-            {
-                var result = surveyService.CreateNewSurveySession(this.CurrentConnectionString, Request.UserHostAddress);
-                Session[AppConstant.SessionNameList.strRespondentID] = result.RespondentID;
-                Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
-            }
-
-            RenderQuestion(currentOrder);
         }
 
         protected void btnNextQuestion_Click(object sender, EventArgs e)
@@ -136,42 +148,60 @@ namespace aitr_connect
         /// </summary>
         private void SaveRespondentAnswer()
         {
-            int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
-            int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
-            string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
-            Control ctl = phQuestionArea.FindControl("ctlOptions");
-
-            if (ctl == null) return;
-
-            // get logic from values
-            switch (type)
+            try
             {
-                case "RadioButton":
-                case "RadioButton_Register": 
-                    var rbl = (RadioButtonList)ctl;
-                    if (!string.IsNullOrEmpty(rbl.SelectedValue))
-                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
-                    break;
-                case "DropDown":
-                    var ddl = (DropDownList)ctl;
-                    if (ddl.SelectedValue != "0")
-                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
-                    break;
-                case string t when t.StartsWith("CheckBox"):
-                    var cbl = (CheckBoxList)ctl;
-                    foreach (ListItem item in cbl.Items)
-                        if (item.Selected)
-                            surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
-                    break;
-                case string t when t.StartsWith("TextBox"):
-                    var txt = (TextBox)ctl;
-                    if (!string.IsNullOrWhiteSpace(txt.Text))
-                    {
-                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
-                    }
-                    break;
-                default:
-                    throw new NotSupportedException($"Question type '{type}' is not supported by the system yet.");
+                // Verify session exists
+                if (Session[AppConstant.SessionNameList.strSessionID] == null ||
+                    Session[AppConstant.SessionNameList.strQuestionID] == null)
+                {
+                    throw new Exception("Session has expired. Please restart the survey.");
+                }
+
+                int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+                int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
+                string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
+                Control ctl = phQuestionArea.FindControl("ctlOptions");
+
+                if (ctl == null) return;
+
+                // get logic from values
+                switch (type)
+                {
+                    case "RadioButton":
+                    case "RadioButton_Register":
+                        var rbl = ctl as RadioButtonList;
+                        if (rbl != null && !string.IsNullOrEmpty(rbl.SelectedValue))
+                            surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
+                        break;
+                    case "DropDown":
+                        var ddl = ctl as DropDownList;
+                        if (ddl != null && ddl.SelectedValue != "0")
+                            surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
+                        break;
+                    case string t when t.StartsWith("CheckBox"):
+                        var cbl = ctl as CheckBoxList;
+                        if (cbl != null)
+                        {
+                            foreach (ListItem item in cbl.Items)
+                                if (item.Selected)
+                                    surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
+                        }
+                        break;
+                    case string t when t.StartsWith("TextBox"):
+                        var txt = ctl as TextBox;
+                        if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
+                        {
+                            surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
+                        }
+                        break;
+                    default:
+                        throw new NotSupportedException($"Question type '{type}' is not supported by the system yet.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Use the shared error handler
+                HandleNavigationError(ex);
             }
         }
 
@@ -363,8 +393,12 @@ namespace aitr_connect
         /// </summary>
         private void HandleNavigationError(Exception ex)
         {
+            // If the error is just the redirect itself, do nothing
+            if (ex is System.Threading.ThreadAbortException) return;
+
             Session[AppConstant.SessionNameList.strErroMessage] = "Navigation error: " + ex.Message;
-            Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            Response.Redirect(AppConstant.PageCatalog.strErrorPage, false); // false prevent crash
+            Context.ApplicationInstance.CompleteRequest();
         }
     }
 }
