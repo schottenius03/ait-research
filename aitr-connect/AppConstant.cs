@@ -28,11 +28,17 @@ namespace aitr_connect
         // Session def
         public class SessionNameList
         {
+            // survey status 
             public const string strIsSurveyActive = "isSurveyActive";
             public const string strErroMessage = "strErroMessage";
-            // sruevy related 
+
             public const string strQuestionIndex = "questionIndex";
-            public const string strUserAnswers = "userAnswers";
+            public const string strUserAnswers = "respondentAnswers";
+
+            public const string strRespondentID = "currentRespondentID";
+            public const string strSessionID = "currentSessionID";
+            public const string strQuestionID = "currentQuestionID";
+            public const string strQuestionType = "currentQuestionType";
         }
     }
 }
