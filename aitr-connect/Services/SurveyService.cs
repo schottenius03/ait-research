@@ -37,6 +37,7 @@ namespace aitr_connect.Services
         public int OptionID { get; set; }
         public string OptionText { get; set; }
     }
+
     /// <summary>
     /// Class to store Validation values
     /// </summary>
@@ -98,6 +99,10 @@ namespace aitr_connect.Services
         /// <summary>
         /// Gets a specific question from the DB based on its display order.
         /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="currentOrder"></param>
+        /// <param name="surveyID"></param>
+        /// <returns></returns>
         public SurveyQuestion GetQuestionByOrder(string connectionString, int currentOrder, int surveyID)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -136,6 +141,9 @@ namespace aitr_connect.Services
         /// <summary>
         /// Gets all available options for a specific question.
         /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="questionID"></param>
+        /// <returns></returns>
         public List<QuestionOption> GetOptionsByQuestionID(string connectionString, int questionID)
         {
             List<QuestionOption> options = new List<QuestionOption>();
@@ -167,6 +175,10 @@ namespace aitr_connect.Services
         /// <summary>
         /// Finds the next main question order, skipping sub-questions defined in QuestionRule.
         /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="currentOrder"></param>
+        /// <param name="surveyID"></param>
+        /// <returns></returns>
         public int GetNextMainQuestionOrder(string connectionString, int currentOrder, int surveyID)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -192,11 +204,16 @@ namespace aitr_connect.Services
                     return (result != DBNull.Value && result != null) ? Convert.ToInt32(result) : -1;
                 }
             }
-        }
-        
+        } 
+
         /// <summary>
         /// store answer to ResponseAnswer table
         /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="sessionID"></param>
+        /// <param name="questionID"></param>
+        /// <param name="optionID"></param>
+        /// <param name="textAnswer"></param>
         public void SaveAnswer(string connectionString, int sessionID, int questionID, int? optionID, string textAnswer)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -245,10 +262,14 @@ namespace aitr_connect.Services
             }
             return (0, 1); 
         }
-
+        
         /// <summary>
-        /// verify if sub question exist 
+        /// Verify if sub question exist
         /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="optionID"></param>
+        /// <param name="surveyID"></param>
+        /// <returns></returns>
         public int? GetSubQuestionOrder(string connectionString, int optionID, int surveyID)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -346,6 +367,26 @@ namespace aitr_connect.Services
             }
 
             return new ValidationResult { IsValid = true };
+        }
+
+        /// <summary>
+        /// Mark session as completed
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="sessionID"></param>
+        public void CompleteSession(string connectionString, int sessionID)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string sql = "UPDATE ResearchSession SET isCompleted = 1 WHERE sessionID = @sID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@sID", sessionID);
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
     }
 }

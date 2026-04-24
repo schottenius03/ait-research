@@ -47,6 +47,12 @@ namespace aitr_connect
                 // if survey is finished
                 if (currentOrder == -1)
                 {
+                    if (Session[AppConstant.SessionNameList.strSessionID] != null)
+                    {
+                        int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+                        surveyService.CompleteSession(this.CurrentConnectionString, sessionID);
+                    }
+
                     Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
                     Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
                     Context.ApplicationInstance.CompleteRequest();
@@ -82,7 +88,7 @@ namespace aitr_connect
 
         protected void btnSkip_Click(object sender, EventArgs e)
         {
-            // Vi validerar fortfarande (ifall de skrivit felaktig text i en TextBox innan de klickade skip)
+            // validate even if textbox is empty
             if (ValidateSelections())
             {
                 MoveToNextQuestion(ignoreRules: true);
@@ -91,10 +97,18 @@ namespace aitr_connect
 
         protected void btnBackToDefault_Click(object sender, EventArgs e)
         {
-            // delete all sessions 
+            // get sessionID 
+            if (Session[AppConstant.SessionNameList.strSessionID] != null)
+            {
+                int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+
+                // mark complete in DB
+                surveyService.CompleteSession(this.CurrentConnectionString, sessionID);
+            }
+
+            // delete all sessions
             Session.Abandon();
 
-            // redirect to default page
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }
 
@@ -102,7 +116,7 @@ namespace aitr_connect
         /// <summary>
         /// Checks if the user's selection meets the min and max requirements from the database.
         /// </summary>
-        // Inuti ValidateSelections i Survey.aspx.cs
+        /// <returns></returns>
         private bool ValidateSelections()
         {
             int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
@@ -225,6 +239,12 @@ namespace aitr_connect
                     {
                         int selectedOptionID = Convert.ToInt32(rbl.SelectedValue);
 
+                        if (Session[AppConstant.SessionNameList.strSessionID] != null)
+                        {
+                            int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+                            surveyService.CompleteSession(this.CurrentConnectionString, sessionID);
+                        }
+
                         if (selectedOptionID == AppConstant.QuestionTypes.RegisterYesOptionID)
                         {
                             // yes to register
@@ -314,31 +334,6 @@ namespace aitr_connect
             }
         }
 
-        /// <summary>
-        /// Find any rules for the question to trigger a sub question
-        /// </summary>
-        /// <param name="ctl"></param>
-        /// <returns></returns>
-        private int? GetTriggeredOrder(Control ctl)
-        {
-            if (ctl is CheckBoxList cbl)
-            {
-                foreach (ListItem item in cbl.Items)
-                {
-                    if (item.Selected)
-                    {
-                        int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(item.Value), 1);
-                        if (order.HasValue) return order;
-                    }
-                }
-            }
-            else if (ctl is ListControl list && !string.IsNullOrEmpty(list.SelectedValue))
-            {
-                return surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(list.SelectedValue), 1);
-            }
-            return null;
-        }
-
         private void RenderQuestion(int currentOrder)
         {
             lblErrorMessage.Text = "";
@@ -405,6 +400,7 @@ namespace aitr_connect
         /// <summary>
         /// redirect to next question 
         /// </summary>
+        /// <param name="nextOrder"></param>
         private void ExecuteNavigation(int nextOrder)
         {
             // save index to session
@@ -418,6 +414,7 @@ namespace aitr_connect
         /// <summary>
         /// handle navigation errrors
         /// </summary>
+        /// <param name="ex"></param>
         private void HandleNavigationError(Exception ex)
         {
             // If the error is just the redirect itself, do nothing
