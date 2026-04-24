@@ -33,132 +33,101 @@ namespace aitr_connect
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // verify enviroment 
-            if (!PageValid()) return;
-
-            // Verify question index
-            if (Session[AppConstant.SessionNameList.strQuestionIndex] == null)
+            if (!PageValid() || Session[AppConstant.SessionNameList.strQuestionIndex] == null)
             {
                 Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
                 return;
             }
 
-            // get current order from session
             int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
 
-            // verify if survey is done
+            // Om survey är klar
             if (currentOrder == -1)
             {
-                // clean sessions when survey is done
                 Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
                 Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
                 return;
             }
 
-            try
+            // Skapa session i DB om det är första gången
+            if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
             {
-                // create new respondent and session 
-                if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
-                {
-                    var result = surveyService.CreateNewSurveySession(this.CurrentConnectionString, Request.UserHostAddress);
-
-                    // store in sessions
-                    Session[AppConstant.SessionNameList.strRespondentID] = result.RespondentID;
-                    Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
-                }
-
-                // fetch the question through the service
-                aitr_connect.Services.SurveyQuestion currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, 1);
-
-                if (currentQ != null)
-                {
-                    // store current question info in session for logic later (e.g. in btnNext_Click)
-                    Session[AppConstant.SessionNameList.strQuestionID] = currentQ.ID;
-                    Session[AppConstant.SessionNameList.strQuestionType] = currentQ.Type;
-
-                    // UI logic: setup labels
-                    lblQuestionNumber.Text = currentQ.ID.ToString();
-
-                    // create and add the question text label
-                    Label lblQuestion = new Label { ID = "lblQuestion", Text = currentQ.Text };
-                    phQuestionArea.Controls.Add(lblQuestion);
-                    phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
-
-                    // present the question in it's form 
-                    var options = surveyService.GetOptionsByQuestionID(this.CurrentConnectionString, currentQ.ID);
-
-                    switch (currentQ.Type)
-                    {
-                        case "RadioButton":
-                            // create list 
-                            RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
-
-                            // loop all alternatives
-                            foreach (var opt in options)
-                            {
-                                rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                            }
-                            phQuestionArea.Controls.Add(rbl);
-                            break;
-
-                        case "CheckBox":
-                            CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
-                            foreach (var opt in options)
-                            {
-                                cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                            }
-                            phQuestionArea.Controls.Add(cbl);
-                            break;
-
-                        case "DropDown":
-                            DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
-                            ddl.Items.Add(new ListItem("-- Select an option --", "0"));
-                            foreach (var opt in options)
-                            {
-                                ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                            }
-                            phQuestionArea.Controls.Add(ddl);
-                            break;
-
-                        case "TextBox":
-                            // create textBox directly
-                            TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
-                            phQuestionArea.Controls.Add(txt);
-                            break;
-                    }
-                }
-                else
-                {
-                    // clean sessions when survey is done
-                    Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
-                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-                }
+                var result = surveyService.CreateNewSurveySession(this.CurrentConnectionString, Request.UserHostAddress);
+                Session[AppConstant.SessionNameList.strRespondentID] = result.RespondentID;
+                Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
             }
-            catch (Exception ex)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred: " + ex.Message;
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
-            }
+
+            // VIKTIGT: Denna metod körs NU varje gång, så kontrollerna finns när knappen klickas!
+            RenderQuestion(currentOrder);
         }
 
         protected void btnNextQuestion_Click(object sender, EventArgs e)
         {
             try
             {
-                // get current question
+                // get session values 
+                int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+                int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
+                string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
+
+                // get UI phQuestionArea 
+                Control ctl = phQuestionArea.FindControl("ctlOptions");
+
+                if (ctl != null)
+                {
+                    // get logic from values
+                    switch (type)
+                    {
+                        case "RadioButton":
+                            RadioButtonList rbl = (RadioButtonList)ctl;
+                            if (!string.IsNullOrEmpty(rbl.SelectedValue))
+                            {
+                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
+                            }
+                            break;
+
+                        case "DropDown":
+                            DropDownList ddl = (DropDownList)ctl;
+                            if (ddl.SelectedValue != "0")
+                            {
+                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
+                            }
+                            break;
+
+                        case "TextBox":
+                            TextBox txt = (TextBox)ctl;
+                            if (!string.IsNullOrWhiteSpace(txt.Text))
+                            {
+                                // Här skickar vi NULL som optionID och sparar strängen i textAnswer
+                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
+                            }
+                            break;
+
+                        case "CheckBox":
+                            CheckBoxList cbl = (CheckBoxList)ctl;
+                            foreach (ListItem item in cbl.Items)
+                            {
+                                if (item.Selected)
+                                {
+                                    // one insert per ticked box 
+                                    surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
+                                }
+                            }
+                            break;
+                    }
+                }
+
+                // navigate to next question
                 int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-
-                // request next question 
                 int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
-
-                // update ID of current question 
                 Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
 
-                // reload page to show the new question
-                Response.Redirect(Request.RawUrl);
+                Response.Redirect(Request.RawUrl, false);
+                Context.ApplicationInstance.CompleteRequest();
             }
             catch (Exception ex)
             {
+                Session[AppConstant.SessionNameList.strErroMessage] = "Error saving answer: " + ex.Message;
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
@@ -177,7 +146,8 @@ namespace aitr_connect
                 Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
 
                 // reload page to show updated question
-                Response.Redirect(Request.RawUrl);
+                Response.Redirect(Request.RawUrl, false);
+                Context.ApplicationInstance.CompleteRequest();
             }
             catch (Exception ex)
             {
@@ -194,8 +164,59 @@ namespace aitr_connect
             // redirect to default page
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }
+
+        private void RenderQuestion(int currentOrder)
+        {
+            // get current question
+            var currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, 1);
+
+            if (currentQ != null)
+            {
+                // save to sessions
+                Session[AppConstant.SessionNameList.strQuestionID] = currentQ.ID;
+                Session[AppConstant.SessionNameList.strQuestionType] = currentQ.Type;
+
+                lblQuestionNumber.Text = currentQ.ID.ToString();
+
+                // clear text
+                phQuestionArea.Controls.Clear();
+                phQuestionArea.Controls.Add(new Label { ID = "lblQuestion", Text = currentQ.Text });
+                phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
+
+                var options = surveyService.GetOptionsByQuestionID(this.CurrentConnectionString, currentQ.ID);
+
+                switch (currentQ.Type)
+                {
+                    case "RadioButton":
+                        RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
+                        foreach (var opt in options) rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(rbl);
+                        break;
+
+                    case "CheckBox":
+                        CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
+                        foreach (var opt in options) cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(cbl);
+                        break;
+
+                    case "DropDown":
+                        DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
+                        ddl.Items.Add(new ListItem("-- Select an option --", "0"));
+                        foreach (var opt in options) ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(ddl);
+                        break;
+
+                    case "TextBox":
+                        TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
+                        phQuestionArea.Controls.Add(txt);
+                        break;
+                }
+            }
+        }
     }
 }
+
+
 
 
 

@@ -26,13 +26,15 @@ namespace aitr_connect
 
         protected void btnSurvey_Click(object sender, EventArgs e)
         {
-            // activate session
+            // clear old sessions and create new respondent with a new session 
+            Session.Clear();
+
+            // update status of survey 
             Session[AppConstant.SessionNameList.strIsSurveyActive] = true;
 
-            // init question order index
+            // set order of question index
             Session[AppConstant.SessionNameList.strQuestionIndex] = 1;
 
-            // send to survey 
             Response.Redirect(AppConstant.PageCatalog.strSurveyPage);
         }
     }

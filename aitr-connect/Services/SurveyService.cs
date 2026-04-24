@@ -133,7 +133,7 @@ namespace aitr_connect.Services
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                string sql = "SELECT optionID, optionText FROM QuestionOption WHERE questionID = @qID AND isActive = 1";
+                string sql = "SELECT optionID, optionText FROM [Option] WHERE questionID = @qID AND isActive = 1";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
@@ -153,6 +153,7 @@ namespace aitr_connect.Services
             }
             return options;
         }
+
         /// <summary>
         /// Finds the next main question order, skipping sub-questions defined in QuestionRule.
         /// </summary>
@@ -179,6 +180,30 @@ namespace aitr_connect.Services
                     object result = cmd.ExecuteScalar();
 
                     return (result != DBNull.Value && result != null) ? Convert.ToInt32(result) : -1;
+                }
+            }
+        }
+        /// <summary>
+        /// store answer to ResponseAnswer table
+        /// </summary>
+        public void SaveAnswer(string connectionString, int sessionID, int questionID, int? optionID, string textAnswer)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string sql = @"INSERT INTO ResponseAnswer (sessionID, questionID, optionID, textAnswer, dateRecorded) 
+                       VALUES (@sID, @qID, @oID, @txt, GETDATE())";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@sID", sessionID);
+                    cmd.Parameters.AddWithValue("@qID", questionID);
+
+                    // handle Null values 
+                    cmd.Parameters.AddWithValue("@oID", (object)optionID ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@txt", (object)textAnswer ?? DBNull.Value);
+
+                    cmd.ExecuteNonQuery();
                 }
             }
         }

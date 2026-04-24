@@ -38,7 +38,7 @@
             <asp:LinkButton ID="btnSkip" CssClass="hover-underline" runat="server" OnClick="btnSkip_Click">Skip this question</asp:LinkButton>
             <br />
             <br />
-            <asp:Button ID="btnNextQuestion" runat="server" Text="Next" OnClick="btnNextQuestion_Click" />
+            <asp:Button ID="btnNextQuestion" runat="server" Text="Next" OnClick="btnNextQuestion_Click" style="height: 29px" />
 
         </div>
     </form>
