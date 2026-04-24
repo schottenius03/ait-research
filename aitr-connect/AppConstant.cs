@@ -25,6 +25,20 @@ namespace aitr_connect
             public const string strErrorPage = "~/ErrorPage.aspx";
         }
 
+        // map dataTypes from DB
+        public class QuestionTypes
+        {
+            public const int RegisterYesOptionID = 56; // yes register 
+            public const int RegisterNoOptionID = 57;  // no register 
+            public const string RadioButtonRegister = "RadioButton_Register";
+            public const string RadioButton = "RadioButton";
+            public const string CheckBox = "CheckBox";
+            public const string DropDown = "DropDown";
+            public const string TextBoxEmail = "TextBox_Email";
+            public const string TextBoxNumeric = "TextBox_Numeric_4";
+            public const string TextBoxAlpha = "TextBox_Alpha";
+        }
+
         // Session def
         public class SessionNameList
         {

@@ -322,21 +322,21 @@ namespace aitr_connect.Services
             {
                 switch (question.Type)
                 {
-                    case "TextBox_Alpha":
+                    case AppConstant.QuestionTypes.TextBoxAlpha:
                         if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^[a-zA-Z\s\-]+$"))
                         {
                             return new ValidationResult { IsValid = false, ErrorMessage = "Suburb name can only contain letters." };
                         }
                         break;
 
-                    case "TextBox_Numeric_4":
+                    case AppConstant.QuestionTypes.TextBoxNumeric:
                         if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^\d{4}$"))
                         {
                             return new ValidationResult { IsValid = false, ErrorMessage = "Postcode must be exactly 4 digits." };
                         }
                         break;
 
-                    case "TextBox_Email":
+                    case AppConstant.QuestionTypes.TextBoxEmail:
                         if (!System.Text.RegularExpressions.Regex.IsMatch(textAnswer, @"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$"))
                         {
                             return new ValidationResult { IsValid = false, ErrorMessage = "Please enter a valid email (e.g. name@domain.com). Numbers are not allowed in the domain suffix." };

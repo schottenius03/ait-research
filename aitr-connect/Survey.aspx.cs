@@ -167,18 +167,18 @@ namespace aitr_connect
                 // get logic from values
                 switch (type)
                 {
-                    case "RadioButton":
-                    case "RadioButton_Register":
+                    case AppConstant.QuestionTypes.RadioButton:
+                    case AppConstant.QuestionTypes.RadioButtonRegister:
                         var rbl = ctl as RadioButtonList;
                         if (rbl != null && !string.IsNullOrEmpty(rbl.SelectedValue))
                             surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
                         break;
-                    case "DropDown":
+                    case AppConstant.QuestionTypes.DropDown:
                         var ddl = ctl as DropDownList;
                         if (ddl != null && ddl.SelectedValue != "0")
                             surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
                         break;
-                    case string t when t.StartsWith("CheckBox"):
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.CheckBox):
                         var cbl = ctl as CheckBoxList;
                         if (cbl != null)
                         {
@@ -187,7 +187,7 @@ namespace aitr_connect
                                     surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
                         }
                         break;
-                    case string t when t.StartsWith("TextBox"):
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.TextBoxAlpha.Split('_')[0]):
                         var txt = ctl as TextBox;
                         if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
                         {
@@ -214,6 +214,33 @@ namespace aitr_connect
             try
             {
                 int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+                string currentType = Session[AppConstant.SessionNameList.strQuestionType]?.ToString();
+
+                if (currentType == AppConstant.QuestionTypes.RadioButtonRegister)
+                {
+                    Control ctl = phQuestionArea.FindControl("ctlOptions");
+                    RadioButtonList rbl = ctl as RadioButtonList;
+
+                    if (rbl != null && !string.IsNullOrEmpty(rbl.SelectedValue))
+                    {
+                        int selectedOptionID = Convert.ToInt32(rbl.SelectedValue);
+
+                        if (selectedOptionID == AppConstant.QuestionTypes.RegisterYesOptionID)
+                        {
+                            // yes to register
+                            Response.Redirect(AppConstant.PageCatalog.strRegisterPage, false);
+                        }
+                        else
+                        {
+                            // no to register 
+                            Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
+                            Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
+                        }
+
+                        Context.ApplicationInstance.CompleteRequest();
+                        return;
+                    }
+                }
 
                 // create list to store all sub questions
                 List<int> triggeredOrders = new List<int>();
@@ -336,34 +363,34 @@ namespace aitr_connect
 
                 switch (currentQ.Type)
                 {
-                    case "RadioButton":
-                    case "RadioButton_Register": 
+                    case AppConstant.QuestionTypes.RadioButton:
+                    case AppConstant.QuestionTypes.RadioButtonRegister:
                         RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
                         foreach (var opt in options) rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
                         phQuestionArea.Controls.Add(rbl);
                         break;
 
-                    case string t when t.StartsWith("CheckBox"):
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.CheckBox):
                         CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
                         foreach (var opt in options) cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
                         phQuestionArea.Controls.Add(cbl);
                         break;
 
-                    case "DropDown":
+                    case AppConstant.QuestionTypes.DropDown:
                         DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
                         ddl.Items.Add(new ListItem("-- Select an option --", "0"));
                         foreach (var opt in options) ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
                         phQuestionArea.Controls.Add(ddl);
                         break;
 
-                    case string t when t.StartsWith("TextBox"):
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.TextBoxAlpha.Split('_')[0]):
                         TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
                         phQuestionArea.Controls.Add(txt);
                         break;
                 }
 
                 // hide skip button on register question
-                if (currentQ.Type == "RadioButton_Register")
+                if (currentQ.Type == AppConstant.QuestionTypes.RadioButtonRegister)
                 {
                     btnSkip.Visible = false;
                 }
