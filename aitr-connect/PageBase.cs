@@ -11,49 +11,31 @@ namespace aitr_connect
     {
         // declare connection key
         public string CurrentConnectionString { get; set; }
+
+        /// <summary>
+        /// Validte which enviroment to run with the correct connection string through DatabaseService.
+        /// </summary>
+        /// <returns></returns>
         public bool PageValid()
         {
             try
             {
-                // tea - straw - connect - poke - get soda - consume
-                string configKey = ConfigurationManager.ConnectionStrings["KailingConnectionString"].ConnectionString;
-                string activeConnectionString = "";
+                // create instance 
+                var dbService = new aitr_connect.Services.DatabaseService();
 
-                // check for correct enviroment 
-                switch (configKey.ToUpper())
-                {
-                    case "DEV":
-                        activeConnectionString = AppConstant.Connection.DevConnectionString;
-                        break;
-                    case "TEST":
-                        activeConnectionString = AppConstant.Connection.TestConnectionString;
-                        break;
-                    case "PROD":
-                        activeConnectionString = AppConstant.Connection.ProdConnectionString;
-                        break;
-                    default:
-                        activeConnectionString = ""; // no available enoviroment
-                        break;
-                }
+                // calculate the correct connection string 
+                this.CurrentConnectionString = dbService.GetActiveConnectionString();
 
-                // set assigned key to variable
-                this.CurrentConnectionString = activeConnectionString;
-
-                // no available enviroment 
+                // enviroment is not valid 
                 if (string.IsNullOrEmpty(this.CurrentConnectionString))
                 {
                     Session[AppConstant.SessionNameList.strErroMessage] = "No valid environment!!! Contact admin";
                     return false;
                 }
 
-                // initiate connection
-                SqlConnection myconn = new SqlConnection();
-                myconn.ConnectionString = activeConnectionString;
-
-                // enviroment is okay
+                // Enviroment is okay
                 return true;
             }
-            // specific error message
             catch (InvalidOperationException)
             {
                 Session[AppConstant.SessionNameList.strErroMessage] = "Internal operation error!!! Contact admin";

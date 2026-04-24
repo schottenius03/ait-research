@@ -13,13 +13,17 @@ namespace aitr_connect
     {
         protected void Page_Init(object sender, EventArgs e)
         {
-            // check if survey is active from session
-            if (Session[AppConstant.SessionNameList.strIsSurveyActive] == null)
+            // cretae instance 
+            var surveyService = new aitr_connect.Services.SurveyService();
+
+            // verify session 
+            if (!surveyService.IsSurveyAccessValid(Session[AppConstant.SessionNameList.strIsSurveyActive]))
             {
                 Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
                 return;
             }
 
+            // verify session 
             if (!PageValid())
             {
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
