@@ -24,7 +24,7 @@
     <form id="form1" runat="server">
         <div>
             <!-- Design -->
-            <asp:Button ID="btnBackToDefault" runat="server" Text="< Go back" BorderStyle="None" BackColor="White" BorderWidth="0" OnClick="btnBackToDefault_Click" />
+            <asp:Button ID="btnBackToDefault" runat="server" Text="Go back" />
             <br />
             <br />
             <asp:Label ID="lblTitle" runat="server" Text="Question " Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>

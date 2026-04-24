@@ -27,6 +27,7 @@ namespace aitr_connect
             if (!PageValid())
             {
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+                return;
             }
         }
 
@@ -34,6 +35,25 @@ namespace aitr_connect
         {
             // verify enviroment 
             if (!PageValid()) return;
+
+            // Verify question index
+            if (Session[AppConstant.SessionNameList.strQuestionIndex] == null)
+            {
+                Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+                return;
+            }
+
+            // get current order from session
+            int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+
+            // verify if survey is done
+            if (currentOrder == -1)
+            {
+                // clean sessions when survey is done
+                Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
+                Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+                return;
+            }
 
             try
             {
@@ -47,18 +67,8 @@ namespace aitr_connect
                     Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
                 }
 
-                // Verify question index
-                if (Session[AppConstant.SessionNameList.strQuestionIndex] == null)
-                {
-                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-                    return;
-                }
-
-                // get current order from session
-                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-
                 // fetch the question through the service
-                aitr_connect.Services.SurveyQuestion currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder);
+                aitr_connect.Services.SurveyQuestion currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, 1);
 
                 if (currentQ != null)
                 {
@@ -123,11 +133,55 @@ namespace aitr_connect
                     Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
                     Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
                 }
-
             }
             catch (Exception ex)
             {
                 Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred: " + ex.Message;
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
+        }
+
+        protected void btnNextQuestion_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // get current question
+                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+
+                // request next question 
+                int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
+
+                // update ID of current question 
+                Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
+
+                // reload page to show the new question
+                Response.Redirect(Request.RawUrl);
+            }
+            catch (Exception ex)
+            {
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
+        }
+
+        protected void btnSkip_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // get current question
+                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
+
+                // get next question that is not a sub question
+                int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
+
+                // update current index
+                Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
+
+                // reload page to show updated question
+                Response.Redirect(Request.RawUrl);
+            }
+            catch (Exception ex)
+            {
+                Session[AppConstant.SessionNameList.strErroMessage] = "Something went wrong, contact admin!!! " + ex.Message;
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
@@ -494,6 +548,35 @@ namespace aitr_connect
             // redirect to default 
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         protected void btnSkip_Click(object sender, EventArgs e)
         {

@@ -88,20 +88,22 @@ namespace aitr_connect.Services
         /// <summary>
         /// Gets a specific question from the DB based on its display order.
         /// </summary>
-        public SurveyQuestion GetQuestionByOrder(string connectionString, int currentOrder)
+        public SurveyQuestion GetQuestionByOrder(string connectionString, int currentOrder, int surveyID)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
                 // get question based on displayOrder
                 string sql = @"SELECT q.questionID, q.questionText, q.questionType, q.minSelections, q.maxSelections 
-                               FROM Question q 
-                               JOIN SurveyQuestion sq ON q.questionID = sq.questionID 
-                               WHERE sq.displayOrder = @order AND sq.surveyID = 1 AND sq.isActive = 1";
+                       FROM Question q 
+                       JOIN SurveyQuestion sq ON q.questionID = sq.questionID 
+                       WHERE sq.displayOrder = @order AND sq.surveyID = @sID AND sq.isActive = 1";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@order", currentOrder);
+                    cmd.Parameters.AddWithValue("@sID", surveyID);
+
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         if (reader.Read())
@@ -118,7 +120,7 @@ namespace aitr_connect.Services
                     }
                 }
             }
-            return null; 
+            return null;
         }
 
         /// <summary>
@@ -150,6 +152,35 @@ namespace aitr_connect.Services
                 }
             }
             return options;
+        }
+        /// <summary>
+        /// Finds the next main question order, skipping sub-questions defined in QuestionRule.
+        /// </summary>
+        public int GetNextMainQuestionOrder(string connectionString, int currentOrder, int surveyID)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                // get next question that is not a sub question
+                string sql = @"
+            SELECT MIN(sq.displayOrder) 
+            FROM SurveyQuestion sq 
+            WHERE sq.surveyID = @sID 
+            AND sq.displayOrder > @currentOrder 
+            AND sq.isActive = 1
+            AND sq.questionID NOT IN (SELECT childQuestionID FROM QuestionRule)";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    // Koppla parametrarna till SQL-frågan
+                    cmd.Parameters.AddWithValue("@sID", surveyID);
+                    cmd.Parameters.AddWithValue("@currentOrder", currentOrder);
+
+                    object result = cmd.ExecuteScalar();
+
+                    return (result != DBNull.Value && result != null) ? Convert.ToInt32(result) : -1;
+                }
+            }
         }
     }
 }
