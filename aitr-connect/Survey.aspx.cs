@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -14,6 +11,7 @@ namespace aitr_connect
     {
         // create instance of the service 
         private SurveyService surveyService = new SurveyService();
+
         protected void Page_Init(object sender, EventArgs e)
         {
             // verify session 
@@ -41,7 +39,7 @@ namespace aitr_connect
 
             int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
 
-            // Om survey är klar
+            // if survey is finished
             if (currentOrder == -1)
             {
                 Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
@@ -49,7 +47,7 @@ namespace aitr_connect
                 return;
             }
 
-            // Skapa session i DB om det är första gången
+            // Screate session 
             if (!IsPostBack && Session[AppConstant.SessionNameList.strSessionID] == null)
             {
                 var result = surveyService.CreateNewSurveySession(this.CurrentConnectionString, Request.UserHostAddress);
@@ -57,82 +55,118 @@ namespace aitr_connect
                 Session[AppConstant.SessionNameList.strSessionID] = result.SessionID;
             }
 
-            // VIKTIGT: Denna metod körs NU varje gång, så kontrollerna finns när knappen klickas!
             RenderQuestion(currentOrder);
         }
 
         protected void btnNextQuestion_Click(object sender, EventArgs e)
         {
-            try
+            if (ValidateSelections())
             {
-                // get session values 
-                int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
-                int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
-                string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
-
-                // get UI phQuestionArea 
-                Control ctl = phQuestionArea.FindControl("ctlOptions");
-
-                if (ctl != null)
-                {
-                    // get logic from values
-                    switch (type)
-                    {
-                        case "RadioButton":
-                            RadioButtonList rbl = (RadioButtonList)ctl;
-                            if (!string.IsNullOrEmpty(rbl.SelectedValue))
-                            {
-                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
-                            }
-                            break;
-
-                        case "DropDown":
-                            DropDownList ddl = (DropDownList)ctl;
-                            if (ddl.SelectedValue != "0")
-                            {
-                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
-                            }
-                            break;
-
-                        case "TextBox":
-                            TextBox txt = (TextBox)ctl;
-                            if (!string.IsNullOrWhiteSpace(txt.Text))
-                            {
-                                // Här skickar vi NULL som optionID och sparar strängen i textAnswer
-                                surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
-                            }
-                            break;
-
-                        case "CheckBox":
-                            CheckBoxList cbl = (CheckBoxList)ctl;
-                            foreach (ListItem item in cbl.Items)
-                            {
-                                if (item.Selected)
-                                {
-                                    // one insert per ticked box 
-                                    surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
-                                }
-                            }
-                            break;
-                    }
-                }
-
-                // navigate to next question
-                int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-                int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
-                Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
-
-                Response.Redirect(Request.RawUrl, false);
-                Context.ApplicationInstance.CompleteRequest();
-            }
-            catch (Exception ex)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Error saving answer: " + ex.Message;
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+                SaveUserAnswer();
+                MoveToNextQuestion();
             }
         }
 
         protected void btnSkip_Click(object sender, EventArgs e)
+        {
+            if (ValidateSelections())
+            {
+                MoveToNextQuestion();
+            }
+        }
+
+        protected void btnBackToDefault_Click(object sender, EventArgs e)
+        {
+            // delete all sessions 
+            Session.Abandon();
+
+            // redirect to default page
+            Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
+        }
+
+
+        /// <summary>
+        /// Checks if the user's selection meets the min and max requirements from the database.
+        /// </summary>
+        private bool ValidateSelections()
+        {
+            int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
+            string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
+            Control ctl = phQuestionArea.FindControl("ctlOptions");
+
+            if (ctl == null) return true;
+
+            // get min and max selections of current question
+            var req = surveyService.GetQuestionRequirements(this.CurrentConnectionString, questionID);
+            int count = 0;
+
+            // get selected answers from respondent
+            if (type == "RadioButton" && !string.IsNullOrEmpty(((RadioButtonList)ctl).SelectedValue)) count = 1;
+            else if (type == "DropDown" && ((DropDownList)ctl).SelectedValue != "0") count = 1;
+            else if (type == "TextBox" && !string.IsNullOrWhiteSpace(((TextBox)ctl).Text)) count = 1;
+            else if (type == "CheckBox")
+            {
+                foreach (ListItem item in ((CheckBoxList)ctl).Items) if (item.Selected) count++;
+            }
+
+            // check if restrictions of selections match respondents answer
+            if (count < req.Min)
+            {
+                lblErrorMessage.Text = $"Please select at least {req.Min} option(s).";
+                return false;
+            }
+            if (count > req.Max)
+            {
+                lblErrorMessage.Text = $"You can select a maximum of {req.Max} options.";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Reads values from UI controls and sends them to the Service layer for storage.
+        /// </summary>
+        private void SaveUserAnswer()
+        {
+            int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
+            int questionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionID]);
+            string type = Session[AppConstant.SessionNameList.strQuestionType].ToString();
+            Control ctl = phQuestionArea.FindControl("ctlOptions");
+
+            if (ctl == null) return;
+
+            // get logic from values
+            switch (type)
+            {
+                case "RadioButton":
+                    var rbl = (RadioButtonList)ctl;
+                    if (!string.IsNullOrEmpty(rbl.SelectedValue))
+                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(rbl.SelectedValue), null);
+                    break;
+                case "DropDown":
+                    var ddl = (DropDownList)ctl;
+                    if (ddl.SelectedValue != "0")
+                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(ddl.SelectedValue), null);
+                    break;
+                case "TextBox":
+                    var txt = (TextBox)ctl;
+                    if (!string.IsNullOrWhiteSpace(txt.Text))
+                        surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, null, txt.Text);
+                    break;
+                case "CheckBox":
+                    var cbl = (CheckBoxList)ctl;
+                    foreach (ListItem item in cbl.Items)
+                        if (item.Selected)
+                            surveyService.SaveAnswer(this.CurrentConnectionString, sessionID, questionID, Convert.ToInt32(item.Value), null);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handles navigation to the next main question by updating session and reloading the page.
+        /// </summary>
+        private void MoveToNextQuestion()
         {
             try
             {
@@ -151,22 +185,15 @@ namespace aitr_connect
             }
             catch (Exception ex)
             {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Something went wrong, contact admin!!! " + ex.Message;
+                Session[AppConstant.SessionNameList.strErroMessage] = "Navigation error: " + ex.Message;
                 Response.Redirect(AppConstant.PageCatalog.strErrorPage);
             }
         }
 
-        protected void btnBackToDefault_Click(object sender, EventArgs e)
-        {
-            // delete all sessions 
-            Session.Abandon();
-
-            // redirect to default page
-            Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-        }
-
         private void RenderQuestion(int currentOrder)
         {
+            lblErrorMessage.Text = "";
+
             // get current question
             var currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, 1);
 
@@ -215,435 +242,3 @@ namespace aitr_connect
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-
-            // save questionIndex as a variable 
-            int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-
-                // no validation needed for going back to Default page
-                btnBackToDefault.CausesValidation = false;
-
-                // dynamic objects 
-                Label lblQuestion = new Label();
-                lblQuestion.ID = "lblQuestion";
-
-                // get question from DB by using current order ID and make sure question is active 
-                string sqlGetQuestion = @"SELECT q.questionID, q.questionText, q.questionType, q.minSelections, q.maxSelections 
-                                          FROM Question q 
-                                          JOIN SurveyQuestion sq ON q.questionID = sq.questionID 
-                                          WHERE sq.displayOrder = @order AND sq.surveyID = 1 AND sq.isActive = 1";
-
-                SqlCommand cmdGetQ = new SqlCommand(sqlGetQuestion, myconn);
-                cmdGetQ.Parameters.AddWithValue("@order", currentOrder);
-
-                // store question to var 
-                SurveyQuestion currentQ = null;
-
-                // using will close reader when done
-                using (reader = cmdGetQ.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        // store query data to variables 
-                        currentQ = new SurveyQuestion
-                        {
-                            ID = Convert.ToInt32(reader["questionID"]),
-                            Text = reader["questionText"].ToString(),
-                            Type = reader["questionType"].ToString(),
-                            MinSelections = Convert.ToInt32(reader["minSelections"]),
-                            MaxSelections = Convert.ToInt32(reader["maxSelections"])
-                        };
-                    }
-                }
-
-                if (currentQ != null)
-                {
-                    // save to sessions
-                    Session["CurrentQuestionID"] = currentQ.ID;
-                    Session["CurrentQuestionType"] = currentQ.Type;
-
-                    // label title to id number 
-                    lblQuestionNumber.Text = currentQ.ID.ToString();
-
-                    // assign questionText from DB to label 
-                    lblQuestion.Text = currentQ.Text;
-
-                    // add to placeholder and the website
-                    phQuestionArea.Controls.Add(lblQuestion);
-                    phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
-
-                    switch (currentQ.Type)
-                    {
-                        case "RadioButton":
-                            // Create RadioButtonList
-                            RadioButtonList rbl = new RadioButtonList { ID = "ctrlInput", CssClass = "form-control-list" };
-                            LoadListOptions(currentQ.ID, rbl, myconn);
-                            phQuestionArea.Controls.Add(rbl);
-
-                            // Add Validation for RadioButton
-                            RequiredFieldValidator rfvRbl = new RequiredFieldValidator
-                            {
-                                ControlToValidate = rbl.ID,
-                                ErrorMessage = "Please select an option.",
-                                ForeColor = System.Drawing.Color.Red,
-                                Display = ValidatorDisplay.Dynamic
-                            };
-                            phQuestionArea.Controls.Add(rfvRbl);
-                            break;
-
-                        case "DropDown":
-                            // Create DropDownList
-                            DropDownList ddl = new DropDownList { ID = "ctrlInput", CssClass = "form-control" };
-                            ddl.Items.Add(new ListItem("-- Select --", ""));
-                            LoadListOptions(currentQ.ID, ddl, myconn);
-                            phQuestionArea.Controls.Add(ddl);
-
-                            // Add Validation for DropDown
-                            RequiredFieldValidator rfvDdl = new RequiredFieldValidator
-                            {
-                                ControlToValidate = ddl.ID,
-                                InitialValue = "",
-                                ErrorMessage = "Please choose an item from the list",
-                                ForeColor = System.Drawing.Color.Red,
-                                Display = ValidatorDisplay.Dynamic
-                            };
-                            phQuestionArea.Controls.Add(rfvDdl);
-                            break;
-
-                        case "CheckBox":
-                            // Create CheckBoxList
-                            CheckBoxList cbl = new CheckBoxList { ID = "ctrlInput", CssClass = "form-control-list" };
-                            LoadListOptions(currentQ.ID, cbl, myconn);
-                            phQuestionArea.Controls.Add(cbl);
-
-                            // store min/max value for validations
-                            int minLimit = currentQ.MinSelections;
-                            int maxLimit = currentQ.MaxSelections;
-
-                            // custom validation
-                            CustomValidator cvCbl = new CustomValidator { ID = "cvCbl" };
-                            cvCbl.ServerValidate += (source, args) =>
-                            {
-                                int selectedCount = 0;
-                                foreach (ListItem li in cbl.Items) { if (li.Selected) selectedCount++; }
-                                args.IsValid = (selectedCount >= minLimit && selectedCount <= maxLimit);
-
-                                // error message to fit req from DB
-                                if (minLimit > 0)
-                                    cvCbl.ErrorMessage = $"Please select up to {maxLimit} options.";
-                                else
-                                    cvCbl.ErrorMessage = $"You can select a maximum of {maxLimit} options.";
-                            };
-                            cvCbl.ForeColor = System.Drawing.Color.Red;
-                            cvCbl.Display = ValidatorDisplay.Dynamic;
-                            phQuestionArea.Controls.Add(cvCbl);
-                            break;
-
-                        case "TextBox":
-                            // create textBox
-                            TextBox txt = new TextBox { ID = "ctrlInput", CssClass = "form-control" };
-                            phQuestionArea.Controls.Add(txt);
-
-                            // get question and validation requirment
-                            string qTextLower = currentQ.Text.ToLower();
-
-                            // min/max values for optional/req questions
-                            if (currentQ.MinSelections > 0)
-                            {
-                                RequiredFieldValidator rfvTxt = new RequiredFieldValidator
-                                {
-                                    ControlToValidate = txt.ID,
-                                    ErrorMessage = "This field is required.",
-                                    ForeColor = System.Drawing.Color.Red,
-                                    Display = ValidatorDisplay.Dynamic
-                                };
-                                phQuestionArea.Controls.Add(rfvTxt);
-                            }
-
-                            if (qTextLower.Contains("email"))
-                            {
-                                // valid email format 
-                                RegularExpressionValidator revEmail = new RegularExpressionValidator
-                                {
-                                    ControlToValidate = txt.ID,
-                                    ValidationExpression = @"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$",
-                                    ErrorMessage = "Please enter a valid email address.",
-                                    ForeColor = System.Drawing.Color.Red,
-                                    Display = ValidatorDisplay.Dynamic
-                                };
-                                phQuestionArea.Controls.Add(revEmail);
-                            }
-                            else if (qTextLower.Contains("postcode"))
-                            {
-                                // require 4 digits
-                                RegularExpressionValidator revPost = new RegularExpressionValidator
-                                {
-                                    ControlToValidate = txt.ID,
-                                    ValidationExpression = @"^\d{4}$",
-                                    ErrorMessage = "Postcode must be 4 digits.",
-                                    ForeColor = System.Drawing.Color.Red,
-                                    Display = ValidatorDisplay.Dynamic
-                                };
-                                phQuestionArea.Controls.Add(revPost);
-                            }
-                            else if (qTextLower.Contains("suburb"))
-                            {
-                                // require letters only 
-                                RegularExpressionValidator revSuburb = new RegularExpressionValidator
-                                {
-                                    ControlToValidate = txt.ID,
-                                    ValidationExpression = @"^[a-zA-Z\s]+$",
-                                    ErrorMessage = "Suburb name must contain only letters.",
-                                    ForeColor = System.Drawing.Color.Red,
-                                    Display = ValidatorDisplay.Dynamic
-                                };
-                                phQuestionArea.Controls.Add(revSuburb);
-                            }
-                            break;
-                    }
-                }
-                else
-                {
-                    // no more question of survey - clear session variables
-                    Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
-                    Session.Remove("CurrentRespondentID");
-                    Session.Remove("CurrentSessionID");
-                    Session.Remove(AppConstant.SessionNameList.strQuestionIndex);
-
-                    // avoid exception by using false for CompleteRequest
-                    Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
-                    Context.ApplicationInstance.CompleteRequest();
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                // set errorMessage
-                Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred: " + ex.Message;
-
-                // redirect to ErrorPage
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
-            }
-            finally
-            {
-                // close connection to DB
-                if (reader != null && !reader.IsClosed) reader.Close();
-                if (myconn != null && myconn.State != ConnectionState.Closed) myconn.Close();
-            }
-        }
-
-        protected void btnNextQuestion_Click(object sender, EventArgs e)
-        {
-            if (Page.IsValid)
-            {
-                SqlConnection myconn = new SqlConnection(this.CurrentConnectionString);
-
-                try
-                {
-                    myconn.Open();
-
-                    // current question from session
-                    int sessionID = Convert.ToInt32(Session["CurrentSessionID"]);
-                    int questionID = Convert.ToInt32(Session["CurrentQuestionID"]);
-                    string questionType = Session["CurrentQuestionType"].ToString();
-                    int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-
-                    // get input control
-                    Control myControl = phQuestionArea.FindControl("ctrlInput");
-
-                    // determine datatype and set options and save choice by respondent
-                    if (myControl is ListControl listControl)
-                    {
-                        // Handles RadioButton, DropDown and CheckBox logic in one loop
-                        foreach (ListItem item in listControl.Items)
-                        {
-                            if (item.Selected)
-                            {
-                                SaveAnswer(sessionID, questionID, item.Value, null, myconn);
-                            }
-                        }
-                    }
-                    else if (myControl is TextBox txt)
-                    {
-                        string answerText = txt.Text;
-                        SaveAnswer(sessionID, questionID, null, answerText, myconn);
-                    }
-
-                    int nextOrder = -1;
-
-                    // Simplified logic: Find the next available displayOrder that is active
-                    string sqlGetNext = @"SELECT MIN(sq.displayOrder) 
-                                 FROM SurveyQuestion sq 
-                                 WHERE sq.surveyID = 1 
-                                 AND sq.displayOrder > @currentOrder 
-                                 AND sq.isActive = 1";
-
-                    using (SqlCommand cmdNext = new SqlCommand(sqlGetNext, myconn))
-                    {
-                        cmdNext.Parameters.AddWithValue("@currentOrder", currentOrder);
-                        object result = cmdNext.ExecuteScalar();
-
-                        if (result != DBNull.Value && result != null)
-                        {
-                            nextOrder = Convert.ToInt32(result);
-                        }
-                    }
-
-                    Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
-
-                    // refresh its own page
-                    Response.Redirect(Request.RawUrl, false);
-                    Context.ApplicationInstance.CompleteRequest();
-                }
-                catch (Exception ex)
-                {
-                    // set errorMessage
-                    Session[AppConstant.SessionNameList.strErroMessage] = "Error: " + ex.Message;
-                    Response.Redirect(AppConstant.PageCatalog.strErrorPage);
-                }
-                finally
-                {
-                    if (myconn.State == ConnectionState.Open) { myconn.Close(); }
-                }
-            }
-        }
-
-        /// <summary>
-        /// save respondent's answer to ResponseAnswer
-        /// handle both altternative questions and txt question 
-        /// optional questions are set to null if left empty by user
-        /// </summary>
-        private void SaveAnswer(int sID, int qID, string oID, string txt, SqlConnection conn)
-        {
-            string sqlInsert = "INSERT INTO ResponseAnswer (sessionID, questionID, optionID, textAnswer, dateRecorded) VALUES (@sID, @qID, @oID, @txt, GETDATE())";
-            SqlCommand cmd = new SqlCommand(sqlInsert, conn);
-
-            cmd.Parameters.AddWithValue("@sID", sID);
-            cmd.Parameters.AddWithValue("@qID", qID);
-
-            // handle null values 
-            cmd.Parameters.AddWithValue("@oID", (object)oID ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@txt", (object)txt ?? DBNull.Value);
-
-            cmd.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// get all options alternatives from DB to the question
-        /// display all the options in specified list 
-        /// </summary>
-        private void LoadListOptions(int qID, ListControl control, SqlConnection conn)
-        {
-
-            // query to get options for question
-            string sqlOptions = "SELECT optionID, optionText FROM [Option] WHERE questionID = @qID AND isActive = 1";
-            SqlCommand cmdOptions = new SqlCommand(sqlOptions, conn);
-            cmdOptions.Parameters.AddWithValue("@qID", qID);
-
-            using (SqlDataReader optReader = cmdOptions.ExecuteReader())
-            {
-                while (optReader.Read())
-                {
-                    ListItem item = new ListItem();
-                    item.Text = optReader["optionText"].ToString();
-                    item.Value = optReader["optionID"].ToString(); // save to ResponseAnswer
-                    control.Items.Add(item);
-                }
-            }
-        }
-
-        protected void btnBackToDefault_Click(object sender, EventArgs e)
-        {
-            // Delete value of session 
-            Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
-            // redirect to default 
-            Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        protected void btnSkip_Click(object sender, EventArgs e)
-        {
-            int currentOrder = Convert.ToInt32(Session[AppConstant.SessionNameList.strQuestionIndex]);
-            int nextOrder = -1;
-
-            using (SqlConnection myconn = new SqlConnection(this.CurrentConnectionString))
-            {
-                myconn.Open();
-
-                // Vi letar efter den MINSTA displayOrder som är STÖRRE än nuvarande,
-                // men vi exkluderar alla frågor som finns med i QuestionRule som 'childQuestionID'.
-                // På så sätt hittar vi nästa fråga som inte är en sub-question.
-                string sqlGetNextMain = @"
-            SELECT MIN(sq.displayOrder) 
-            FROM SurveyQuestion sq 
-            WHERE sq.surveyID = 1 
-            AND sq.displayOrder > @currentOrder 
-            AND sq.isActive = 1
-            AND sq.questionID NOT IN (SELECT childQuestionID FROM QuestionRule)";
-
-                using (SqlCommand cmdNext = new SqlCommand(sqlGetNextMain, myconn))
-                {
-                    cmdNext.Parameters.AddWithValue("@currentOrder", currentOrder);
-                    object result = cmdNext.ExecuteScalar();
-
-                    if (result != DBNull.Value && result != null)
-                    {
-                        nextOrder = Convert.ToInt32(result);
-                    }
-                }
-            }
-
-            // Uppdatera index. Om nextOrder är -1 kommer Page_Load hantera att enkäten är slut.
-            Session[AppConstant.SessionNameList.strQuestionIndex] = nextOrder;
-
-            Response.Redirect(Request.RawUrl);
-        }
-    }
-} */

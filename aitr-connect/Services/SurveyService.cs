@@ -183,6 +183,7 @@ namespace aitr_connect.Services
                 }
             }
         }
+        
         /// <summary>
         /// store answer to ResponseAnswer table
         /// </summary>
@@ -204,6 +205,59 @@ namespace aitr_connect.Services
                     cmd.Parameters.AddWithValue("@txt", (object)textAnswer ?? DBNull.Value);
 
                     cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        /// <summary>
+        /// get min and max selection of the question
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="questionID"></param>
+        /// <returns></returns>
+        public (int Min, int Max) GetQuestionRequirements(string connectionString, int questionID)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string sql = "SELECT minSelections, maxSelections FROM Question WHERE questionID = @qID";
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@qID", questionID);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return (Convert.ToInt32(reader["minSelections"]), Convert.ToInt32(reader["maxSelections"]));
+                        }
+                    }
+                }
+            }
+            return (0, 1); 
+        }
+
+        /// <summary>
+        /// verify if sub question exist 
+        /// </summary>
+        public int? GetSubQuestionOrder(string connectionString, int optionID, int surveyID)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                // search using trigger for sub question existence
+                string sql = @"
+            SELECT sq.displayOrder 
+            FROM QuestionRule qr
+            JOIN SurveyQuestion sq ON qr.childQuestionID = sq.questionID
+            WHERE qr.parentOptionID = @oID AND sq.surveyID = @sID AND sq.isActive = 1";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@oID", optionID);
+                    cmd.Parameters.AddWithValue("@sID", surveyID);
+
+                    object result = cmd.ExecuteScalar();
+                    return (result != null && result != DBNull.Value) ? (int?)Convert.ToInt32(result) : null;
                 }
             }
         }

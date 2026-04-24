@@ -35,6 +35,8 @@
             <!-- Question -->
             <asp:PlaceHolder ID="phQuestionArea" runat="server"></asp:PlaceHolder>
             <br />
+            <asp:Label ID="lblErrorMessage" runat="server" ForeColor="Red" Font-Bold="true"></asp:Label>
+            <br />
             <asp:LinkButton ID="btnSkip" CssClass="hover-underline" runat="server" OnClick="btnSkip_Click">Skip this question</asp:LinkButton>
             <br />
             <br />
