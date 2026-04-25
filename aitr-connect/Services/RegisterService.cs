@@ -215,7 +215,7 @@ namespace aitr_connect.Services
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                // update both table 
+                // We update both tables to ensure data integrity
                 string sql = @"
                     UPDATE Respondent SET IsAnonymous = 0 WHERE respondentID = @rID;
                     UPDATE ResearchSession SET isCompleted = 1 WHERE respondentID = @rID;";

@@ -1,53 +1,143 @@
-﻿body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+﻿/* Grundinställningar för hela sidan */
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
 }
 
+/* Huvudboxen */
 .container {
-    padding: 30px;
-    background-color: #fff;
-    margin: 20px auto;
-    width: 90%;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    width: 98%;
+    max-width: 1600px;
 }
 
-/* Styling för de dynamiska raderna som skapas i C# */
+/* Header för Back-knapp till vänster och titel i mitten */
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.search-title {
+    color: #003399;
+    margin: 0;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+/* Sökfälten (Filters) - placeras i rader */
+.filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    background-color: #fcfcfc;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
 .search-row {
-    margin-bottom: 12px;
     display: flex;
     align-items: center;
-    gap: 15px;
+    margin: 5px;
 }
 
     .search-row label {
         font-weight: bold;
+        font-size: 12px;
+        margin-right: 8px;
+        white-space: nowrap;
         color: #333;
     }
 
-.button-section {
-    margin: 25px 0;
+.form-control {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 130px;
+    font-size: 12px;
 }
 
-.btn {
-    padding: 8px 20px;
-    cursor: pointer;
-}
-
-/* GridView Styling */
+/* Tabellen (GridView) - Optimerad för läsbarhet */
 .results-grid {
+    width: 100%;
     margin-top: 20px;
     border-collapse: collapse;
 }
 
+    /* Vänsterjusterade rubriker med mer luft */
     .results-grid th {
         background-color: #003399;
         color: white;
-        padding: 10px;
-        text-align: left;
+        font-size: 10px;
+        padding: 10px 12px; /* Mer luft på sidorna */
+        white-space: nowrap;
+        text-transform: uppercase;
+        text-align: left; /* Tvingar texten till vänster */
     }
 
+    /* Vänsterjusterad data (viktigt för Email!) */
     .results-grid td {
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
+        font-size: 11px;
+        padding: 8px 12px; /* Mer luft för att separera kolumnerna */
+        border-bottom: 1px solid #eee;
+        text-align: left; /* Tvingar texten till vänster */
+        color: #444;
     }
+
+    /* Gör varannan rad grå för att lättare följa datan horisontellt */
+    .results-grid tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .results-grid tr:hover {
+        background-color: #f1f4f9;
+    }
+
+/* Knappar */
+.btn-back {
+    background-color: #003399;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-main {
+    background-color: #003399;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+    .btn-main:hover, .btn-back:hover {
+        background-color: #002266;
+    }
+
+.button-section {
+    text-align: center;
+    margin: 20px 0;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
+}
