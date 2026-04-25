@@ -17,7 +17,6 @@ namespace aitr_connect
         {
             if (!PageValid()) Response.Redirect(AppConstant.PageCatalog.strErrorPage);
 
-            // DDA: Renderar filter baserat på View-kolumnerna
             RenderFilters();
 
             if (!IsPostBack)
@@ -28,7 +27,6 @@ namespace aitr_connect
 
         private void BindGrid()
         {
-            // Initial laddning: hämtar allt utan filter
             gvUser.DataSource = _searchService.GetFilteredRespondents(this.CurrentConnectionString, null, "");
             gvUser.DataBind();
         }
@@ -36,25 +34,55 @@ namespace aitr_connect
         private void RenderFilters()
         {
             phFilters.Controls.Clear();
-            // Vi hämtar kolumnerna dynamiskt från din View
             var columns = _searchService.GetViewColumns(this.CurrentConnectionString);
 
             foreach (string colName in columns)
             {
-                Panel pnlRow = new Panel { CssClass = "search-row" };
+                // Skip ID columns
+                if (colName.ToLower().EndsWith("id")) continue;
 
-                // Här tog vi bort kolonet efter namnet
-                pnlRow.Controls.Add(new Label { Text = colName + " " });
+                Panel pnlRow = new Panel { CssClass = "filter-group", Style = { ["margin-bottom"] = "15px" } };
 
-                // Skapar textbox med ID baserat på kolumnnamn
-                TextBox tbx = new TextBox
+                // header
+                pnlRow.Controls.Add(new Label
                 {
-                    ID = "filter_" + colName.Replace(" ", "_"),
-                    CssClass = "form-control"
-                };
-                tbx.Attributes["data-column"] = colName;
+                    Text = colName,
+                    CssClass = "form-label",
+                    Style = { ["display"] = "block", ["font-weight"] = "bold" }
+                });
 
-                pnlRow.Controls.Add(tbx);
+                var metadata = _searchService.GetColumnMetadata(this.CurrentConnectionString, colName);
+
+                if (metadata.Options.Count > 0)
+                {
+                    // DropDown for categories
+                    DropDownList ddl = new DropDownList
+                    {
+                        ID = "filter_" + colName.Replace(" ", "_"),
+                        CssClass = "form-control"
+                    };
+                    ddl.Attributes["data-column"] = colName;
+                    ddl.Items.Add(new ListItem("-- Select All --", ""));
+
+                    foreach (var opt in metadata.Options)
+                    {
+                        // using text for text and value to match view
+                        ddl.Items.Add(new ListItem(opt.Text, opt.Value));
+                    }
+                    pnlRow.Controls.Add(ddl);
+                }
+                else
+                {
+                    // textbox for free search
+                    TextBox tbx = new TextBox
+                    {
+                        ID = "filter_" + colName.Replace(" ", "_"),
+                        CssClass = "form-control"
+                    };
+                    tbx.Attributes["data-column"] = colName;
+                    pnlRow.Controls.Add(tbx);
+                }
+
                 phFilters.Controls.Add(pnlRow);
             }
         }
@@ -64,20 +92,55 @@ namespace aitr_connect
             List<SqlParameter> sqlParams = new List<SqlParameter>();
             StringBuilder whereClause = new StringBuilder();
 
-            // Loopa igenom phFilters för att hitta sökord
-            foreach (Control ctrl in phFilters.Controls)
+            foreach (Control pnl in phFilters.Controls)
             {
-                if (ctrl is Panel pnl)
+                if (pnl is Panel row)
                 {
-                    foreach (Control child in pnl.Controls)
+                    foreach (Control child in row.Controls)
                     {
-                        if (child is TextBox tbx && !string.IsNullOrWhiteSpace(tbx.Text))
+                        string val = "";
+                        string colName = "";
+                        bool isDropDown = false;
+
+                        if (child is DropDownList ddl && !string.IsNullOrEmpty(ddl.SelectedValue))
                         {
-                            string colName = tbx.Attributes["data-column"];
+                            val = ddl.SelectedValue;
+                            colName = ddl.Attributes["data-column"];
+                            isDropDown = true;
+                        }
+                        else if (child is TextBox tbx && !string.IsNullOrWhiteSpace(tbx.Text))
+                        {
+                            val = tbx.Text.Trim();
+                            colName = tbx.Attributes["data-column"];
+                            isDropDown = false;
+                        }
+
+                        if (!string.IsNullOrEmpty(val))
+                        {
                             string paramName = "@p" + sqlParams.Count;
 
-                            whereClause.Append($" AND [{colName}] LIKE {paramName}");
-                            sqlParams.Add(new SqlParameter(paramName, "%" + tbx.Text + "%"));
+                            // checkBox categories
+                            if (isDropDown)
+                            {
+                                if (colName == "Sports" || colName == "Travel Destination")
+                                {
+                                    // include more than one option from filtering
+                                    whereClause.Append($" AND [{colName}] LIKE {paramName}");
+                                    sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
+                                }
+                                else
+                                {
+                                    // rest of dropdowns
+                                    whereClause.Append($" AND [{colName}] = {paramName}");
+                                    sqlParams.Add(new SqlParameter(paramName, val));
+                                }
+                            }
+                            else
+                            {
+                                // including for textboxes
+                                whereClause.Append($" AND [{colName}] LIKE {paramName}");
+                                sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
+                            }
                         }
                     }
                 }

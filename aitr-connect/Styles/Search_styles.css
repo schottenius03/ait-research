@@ -39,7 +39,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
+    gap: 15px; /* Ökat gap mellan de olika sök-blocken */
     background-color: #fcfcfc;
     padding: 15px;
     border-radius: 8px;
@@ -55,7 +55,7 @@ body {
     .search-row label {
         font-weight: bold;
         font-size: 12px;
-        margin-right: 8px;
+        margin-right: 12px; /* FIX: Här är mellanrummet som räddar din huvudvärk! */
         white-space: nowrap;
         color: #333;
     }
@@ -64,38 +64,35 @@ body {
     padding: 5px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    width: 130px;
+    width: 140px; /* Lite bredare för bättre balans */
     font-size: 12px;
 }
 
-/* Tabellen (GridView) - Optimerad för läsbarhet */
+/* Tabellen (GridView) */
 .results-grid {
     width: 100%;
     margin-top: 20px;
     border-collapse: collapse;
 }
 
-    /* Vänsterjusterade rubriker med mer luft */
     .results-grid th {
         background-color: #003399;
         color: white;
         font-size: 10px;
-        padding: 10px 12px; /* Mer luft på sidorna */
+        padding: 10px 12px;
         white-space: nowrap;
         text-transform: uppercase;
-        text-align: left; /* Tvingar texten till vänster */
+        text-align: left;
     }
 
-    /* Vänsterjusterad data (viktigt för Email!) */
     .results-grid td {
         font-size: 11px;
-        padding: 8px 12px; /* Mer luft för att separera kolumnerna */
+        padding: 8px 12px;
         border-bottom: 1px solid #eee;
-        text-align: left; /* Tvingar texten till vänster */
+        text-align: left;
         color: #444;
     }
 
-    /* Gör varannan rad grå för att lättare följa datan horisontellt */
     .results-grid tr:nth-child(even) {
         background-color: #f9f9f9;
     }

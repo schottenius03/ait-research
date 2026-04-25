@@ -7,7 +7,7 @@ namespace aitr_connect
 {
     public class AppConstant
     {
-        // DB connection management for multiple enviroments
+        // DB connection management for multiple environments
         public class Connection
         {
             public const String DevConnectionString = "Data Source=SQL8012.site4now.net;Initial Catalog=db_9ab8b7_126dda14621;User Id=db_9ab8b7_126dda14621_admin;Password=DG5py76V;";
@@ -68,6 +68,24 @@ namespace aitr_connect
             public const int intPhoneID = 17;
         }
 
-
+        // Search module configuration
+        public static class SearchSettings
+        {
+            /// <summary>
+            /// Whitelist of columns from V_RespondentReport to dropdown
+            /// </summary>
+            public static readonly List<string> FilterableColumns = new List<string>
+            {
+                "Age Range",
+                "Gender",
+                "State",
+                "Bank",
+                "Bank Services",
+                "Newspaper",         
+                "News Section",
+                "Sports",
+                "Travel Destinations"
+            };
+        }
     }
 }
