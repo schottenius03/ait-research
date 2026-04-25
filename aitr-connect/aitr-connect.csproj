@@ -71,7 +71,9 @@
     <Content Include="ErrorPage.aspx" />
     <Content Include="Register.aspx" />
     <Content Include="Search.aspx" />
+    <Content Include="StaffLogin.aspx" />
     <Content Include="Styles\Default_styles.css" />
+    <Content Include="Styles\StaffLogin_styles.css" />
     <Content Include="Styles\Register_styles.css" />
     <Content Include="Styles\Search_styles.css" />
     <Content Include="Styles\Survey_styles.css" />
@@ -115,7 +117,15 @@
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\RegisterService.cs" />
     <Compile Include="Services\SearchService.cs" />
+    <Compile Include="Services\StaffLoginService.cs" />
     <Compile Include="Services\SurveyService.cs" />
+    <Compile Include="StaffLogin.aspx.cs">
+      <DependentUpon>StaffLogin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="StaffLogin.aspx.designer.cs">
+      <DependentUpon>StaffLogin.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Survey.aspx.cs">
       <DependentUpon>Survey.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

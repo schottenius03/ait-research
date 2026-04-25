@@ -13,7 +13,7 @@
             <asp:Label ID="lblSub" runat="server" CssClass="sub-title" Text="Select a module to continue"></asp:Label>
             
             <div class="menu-area">
-                <asp:Button ID="btnSearch" runat="server" Text="Search Respondents" CssClass="btn btn-primary" OnClick="btnSearch_Click" />
+                <asp:Button ID="btnSearch" runat="server" Text="Staff login" CssClass="btn btn-primary" OnClick="btnSearch_Click" />
                 
                 <asp:Button ID="btnRegister" runat="server" Text="Register Respondent" CssClass="btn btn-primary" OnClick="btnRegister_Click" />
                 

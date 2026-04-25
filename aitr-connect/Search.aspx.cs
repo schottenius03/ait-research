@@ -189,7 +189,7 @@ namespace aitr_connect
             }
         }
 
-        protected void btnBackToDefault_Click(object sender, EventArgs e)
+        protected void btnSignOut_Click(object sender, EventArgs e)
         {
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }

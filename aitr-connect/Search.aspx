@@ -10,7 +10,7 @@
     <form id="form1" runat="server">
         <div class="container">
             <div class="header-row">
-                <asp:Button ID="btnBackToDefault" runat="server" Text="← Go Back" OnClick="btnBackToDefault_Click" CssClass="btn-back" />
+                <asp:Button ID="btnSignOut" runat="server" Text="Sign Out" OnClick="btnSignOut_Click" CssClass="btn-back" />
                 <h1 class="search-title">Search</h1>
                 <div style="width: 100px;"></div> </div>
             

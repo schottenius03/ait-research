@@ -11,12 +11,11 @@ namespace aitr_connect
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-
         }
 
         protected void btnSearch_Click(object sender, EventArgs e)
         {
-            Response.Redirect(AppConstant.PageCatalog.strSearchPage);
+            Response.Redirect(AppConstant.PageCatalog.strStaffLoginPage);
         }
 
         protected void btnRegister_Click(object sender, EventArgs e)

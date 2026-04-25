@@ -23,6 +23,7 @@ namespace aitr_connect
             public const string strRegisterPage = "~/Register.aspx";
             public const string strSurveyPage = "~/Survey.aspx";
             public const string strErrorPage = "~/ErrorPage.aspx";
+            public const string strStaffLoginPage = "~/StaffLogin.aspx";
         }
 
         // map dataTypes from DB
