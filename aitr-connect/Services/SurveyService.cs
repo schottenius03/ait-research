@@ -49,6 +49,7 @@ namespace aitr_connect.Services
     public class SurveyService
     {
 
+
         /// <summary>
         /// Verify session has started and update the status. 
         /// </summary>
@@ -204,10 +205,10 @@ namespace aitr_connect.Services
                     return (result != DBNull.Value && result != null) ? Convert.ToInt32(result) : -1;
                 }
             }
-        } 
+        }
 
         /// <summary>
-        /// store answer to ResponseAnswer table
+        /// store answer to ResponseAnswer table and update Respondent table when answering email 
         /// </summary>
         /// <param name="connectionString"></param>
         /// <param name="sessionID"></param>
@@ -219,8 +220,20 @@ namespace aitr_connect.Services
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+
+                // get questionType
+                string typeSql = "SELECT questionType FROM Question WHERE questionID = @qID";
+                string qType = "";
+                using (SqlCommand cmdType = new SqlCommand(typeSql, conn))
+                {
+                    cmdType.Parameters.AddWithValue("@qID", questionID);
+                    object result = cmdType.ExecuteScalar();
+                    qType = result != null ? result.ToString() : "";
+                }
+
+                // save to ResponseAnswer
                 string sql = @"INSERT INTO ResponseAnswer (sessionID, questionID, optionID, textAnswer, dateRecorded) 
-                       VALUES (@sID, @qID, @oID, @txt, GETDATE())";
+                                VALUES (@sID, @qID, @oID, @txt, GETDATE())";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
@@ -232,6 +245,22 @@ namespace aitr_connect.Services
                     cmd.Parameters.AddWithValue("@txt", (object)textAnswer ?? DBNull.Value);
 
                     cmd.ExecuteNonQuery();
+                }
+
+                // email to update respondent table 
+                if (qType == AppConstant.QuestionTypes.TextBoxEmail && !string.IsNullOrEmpty(textAnswer))
+                {
+                    // update anonymous status
+                    string sqlEmail = @"UPDATE Respondent 
+                                        SET email = @email, IsAnonymous = 0 
+                                        WHERE respondentID = (SELECT respondentID FROM ResearchSession WHERE sessionID = @sID)";
+
+                    using (SqlCommand cmdEmail = new SqlCommand(sqlEmail, conn))
+                    {
+                        cmdEmail.Parameters.AddWithValue("@email", textAnswer);
+                        cmdEmail.Parameters.AddWithValue("@sID", sessionID);
+                        cmdEmail.ExecuteNonQuery();
+                    }
                 }
             }
         }
@@ -384,6 +413,32 @@ namespace aitr_connect.Services
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@sID", sessionID);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Update respondents status if anonymous or not 
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="sessionID"></param>
+        /// <param name="isAnonymous"></param>
+        public void UpdateAnonymousStatus(string connectionString, int sessionID, bool isAnonymous)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                // get respondent thorugh researchSession
+                string sql = @"UPDATE Respondent 
+                       SET IsAnonymous = @isAnon 
+                       WHERE respondentID = (SELECT respondentID FROM ResearchSession WHERE sessionID = @sID)";
+
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@isAnon", isAnonymous ? 1 : 0);
+                    cmd.Parameters.AddWithValue("@sID", sessionID);
+
+                    conn.Open();
                     cmd.ExecuteNonQuery();
                 }
             }

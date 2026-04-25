@@ -53,6 +53,10 @@ namespace aitr_connect
             public const string strSessionID = "currentSessionID";
             public const string strQuestionID = "currentQuestionID";
             public const string strQuestionType = "currentQuestionType";
+
+            public const string strSurveyID = "currentSurveyID";
         }
+
+
     }
 }

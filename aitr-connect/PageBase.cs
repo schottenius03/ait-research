@@ -1,61 +1,67 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Web;
+using System.Data.SqlClient;
 
 namespace aitr_connect
 {
     public class PageBase : System.Web.UI.Page
     {
-        // declare connection key
-        public string CurrentConnectionString { get; set; }
+        /// <summary>
+        /// Centralized connection string retrieved from AppConstant.
+        /// </summary>
+        public string CurrentConnectionString
+        {
+            get { return AppConstant.Connection.DevConnectionString; }
+        }
 
         /// <summary>
-        /// Validte which enviroment to run with the correct connection string through DatabaseService.
+        /// Defines the active survey ID for the Data Driven Architecture (DDA).
         /// </summary>
-        /// <returns></returns>
+        public int CurrentSurveyID
+        {
+            get
+            {
+                // Check if SurveyID is stored in session
+                if (Session[AppConstant.SessionNameList.strSurveyID] != null)
+                    return Convert.ToInt32(Session[AppConstant.SessionNameList.strSurveyID]);
+
+                return 1; // Fallback to ID 1
+            }
+        }
+
+        /// <summary>
+        /// Validates that the database connection is open and available.
+        /// </summary>
+        /// <returns>True if connection is successful</returns>
         public bool PageValid()
         {
             try
             {
-                // create instance 
-                var dbService = new aitr_connect.Services.DatabaseService();
-
-                // calculate the correct connection string 
-                this.CurrentConnectionString = dbService.GetActiveConnectionString();
-
-                // enviroment is not valid 
-                if (string.IsNullOrEmpty(this.CurrentConnectionString))
+                using (SqlConnection conn = new SqlConnection(CurrentConnectionString))
                 {
-                    Session[AppConstant.SessionNameList.strErroMessage] = "No valid environment!!! Contact admin";
-                    return false;
+                    conn.Open();
+                    return true;
                 }
+            }
+            catch (Exception ex)
+            {
+                // Store error message for the ErrorPage to display
+                Session[AppConstant.SessionNameList.strErroMessage] = "Database Connection Error: " + ex.Message;
+                return false;
+            }
+        }
 
-                // Enviroment is okay
-                return true;
-            }
-            catch (InvalidOperationException)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Internal operation error!!! Contact admin";
-                return false;
-            }
-            catch (ConfigurationErrorsException)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Internal configuration error!!! Contact admin";
-                return false;
-            }
-            catch (SqlException)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "Database general error!!! Try again later.";
-                return false;
-            }
-            catch (Exception)
-            {
-                Session[AppConstant.SessionNameList.strErroMessage] = "General system error!!! Try again later.";
-                return false;
-            }
+        /// <summary>
+        /// Clears all survey-related sessions upon completion or cancellation.
+        /// </summary>
+        public void ClearSurveySessions()
+        {
+            Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
+            Session.Remove(AppConstant.SessionNameList.strQuestionIndex);
+            Session.Remove(AppConstant.SessionNameList.strRespondentID);
+            Session.Remove(AppConstant.SessionNameList.strSessionID);
         }
     }
 }

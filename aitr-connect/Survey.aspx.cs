@@ -209,7 +209,8 @@ namespace aitr_connect
                         }
                         break;
                     default:
-                        throw new NotSupportedException($"Question type '{type}' is not supported by the system yet.");
+                        System.Diagnostics.Debug.WriteLine($"Okänd frågetyp: {type}");
+                        break;
                 }
             }
             catch (Exception ex)
@@ -219,6 +220,10 @@ namespace aitr_connect
             }
         }
 
+        /// <summary>
+        /// Handles navigation to the next main question by updating session and reloading the page.
+        /// </summary>
+        /// <param name="ignoreRules"></param>
         /// <summary>
         /// Handles navigation to the next main question by updating session and reloading the page.
         /// </summary>
@@ -238,21 +243,25 @@ namespace aitr_connect
                     if (rbl != null && !string.IsNullOrEmpty(rbl.SelectedValue))
                     {
                         int selectedOptionID = Convert.ToInt32(rbl.SelectedValue);
-
-                        if (Session[AppConstant.SessionNameList.strSessionID] != null)
-                        {
-                            int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
-                            surveyService.CompleteSession(this.CurrentConnectionString, sessionID);
-                        }
+                        int sessionID = Convert.ToInt32(Session[AppConstant.SessionNameList.strSessionID]);
 
                         if (selectedOptionID == AppConstant.QuestionTypes.RegisterYesOptionID)
                         {
-                            // yes to register
+                            // respondent want to register
+                            surveyService.UpdateAnonymousStatus(this.CurrentConnectionString, sessionID, false);
+
                             Response.Redirect(AppConstant.PageCatalog.strRegisterPage, false);
                         }
                         else
                         {
-                            // no to register 
+                            // respondent don't want to register 
+                            surveyService.UpdateAnonymousStatus(this.CurrentConnectionString, sessionID, true);
+
+                            if (Session[AppConstant.SessionNameList.strSessionID] != null)
+                            {
+                                surveyService.CompleteSession(this.CurrentConnectionString, sessionID);
+                            }
+
                             Session.Remove(AppConstant.SessionNameList.strIsSurveyActive);
                             Response.Redirect(AppConstant.PageCatalog.strDefaultPage, false);
                         }
@@ -274,7 +283,9 @@ namespace aitr_connect
                         {
                             if (item.Selected)
                             {
-                                int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(item.Value), 1);
+                                // Uppdaterad: använder this.CurrentSurveyID istället för hårdkodad 1
+                                int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(item.Value), this.CurrentSurveyID);
+
                                 // add to list if not already exist
                                 if (order.HasValue && !triggeredOrders.Contains(order.Value))
                                 {
@@ -286,7 +297,7 @@ namespace aitr_connect
                     // handle radiobutton/dropdwon only trigger once
                     else if (ctl is ListControl list && !string.IsNullOrEmpty(list.SelectedValue))
                     {
-                        int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(list.SelectedValue), 1);
+                        int? order = surveyService.GetSubQuestionOrder(this.CurrentConnectionString, Convert.ToInt32(list.SelectedValue), this.CurrentSurveyID);
                         if (order.HasValue) triggeredOrders.Add(order.Value);
                     }
                 }
@@ -323,7 +334,7 @@ namespace aitr_connect
                     else
                     {
                         // go to next parent main question
-                        int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, 1);
+                        int nextOrder = surveyService.GetNextMainQuestionOrder(this.CurrentConnectionString, currentOrder, this.CurrentSurveyID);
                         ExecuteNavigation(nextOrder);
                     }
                 }
@@ -331,69 +342,6 @@ namespace aitr_connect
             catch (Exception ex)
             {
                 HandleNavigationError(ex);
-            }
-        }
-
-        private void RenderQuestion(int currentOrder)
-        {
-            lblErrorMessage.Text = "";
-
-            // get current question
-            var currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, 1);
-
-            if (currentQ != null)
-            {
-                // save to sessions
-                Session[AppConstant.SessionNameList.strQuestionID] = currentQ.ID;
-                Session[AppConstant.SessionNameList.strQuestionType] = currentQ.Type;
-
-                lblQuestionNumber.Text = currentQ.ID.ToString();
-
-                // clear text
-                phQuestionArea.Controls.Clear();
-                phQuestionArea.Controls.Add(new Label { ID = "lblQuestion", Text = currentQ.Text });
-                phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
-
-                var options = surveyService.GetOptionsByQuestionID(this.CurrentConnectionString, currentQ.ID);
-
-                switch (currentQ.Type)
-                {
-                    case AppConstant.QuestionTypes.RadioButton:
-                    case AppConstant.QuestionTypes.RadioButtonRegister:
-                        RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
-                        foreach (var opt in options) rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                        phQuestionArea.Controls.Add(rbl);
-                        break;
-
-                    case string t when t.StartsWith(AppConstant.QuestionTypes.CheckBox):
-                        CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
-                        foreach (var opt in options) cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                        phQuestionArea.Controls.Add(cbl);
-                        break;
-
-                    case AppConstant.QuestionTypes.DropDown:
-                        DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
-                        ddl.Items.Add(new ListItem("-- Select an option --", "0"));
-                        foreach (var opt in options) ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
-                        phQuestionArea.Controls.Add(ddl);
-                        break;
-
-                    case string t when t.StartsWith(AppConstant.QuestionTypes.TextBoxAlpha.Split('_')[0]):
-                        TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
-                        phQuestionArea.Controls.Add(txt);
-                        break;
-                }
-
-                // hide skip button on register question
-                if (currentQ.Type == AppConstant.QuestionTypes.RadioButtonRegister)
-                {
-                    btnSkip.Visible = false;
-                }
-                else
-                {
-                    // only show skip button when selection is 0
-                    btnSkip.Visible = (currentQ.MinSelections == 0);
-                }
             }
         }
 
@@ -423,6 +371,60 @@ namespace aitr_connect
             Session[AppConstant.SessionNameList.strErroMessage] = "Navigation error: " + ex.Message;
             Response.Redirect(AppConstant.PageCatalog.strErrorPage, false); // false prevent crash
             Context.ApplicationInstance.CompleteRequest();
+        }
+
+        /// <summary>
+        /// renders the question based on configuration
+        /// </summary>
+        /// <param name="currentOrder"></param>
+        private void RenderQuestion(int currentOrder)
+        {
+            lblErrorMessage.Text = "";
+            // Get current question using the DDA structure from PageBase
+            var currentQ = surveyService.GetQuestionByOrder(this.CurrentConnectionString, currentOrder, this.CurrentSurveyID);
+
+            if (currentQ != null)
+            {
+                // save to sessions
+                Session[AppConstant.SessionNameList.strQuestionID] = currentQ.ID;
+                Session[AppConstant.SessionNameList.strQuestionType] = currentQ.Type;
+
+                lblQuestionNumber.Text = currentQ.ID.ToString();
+
+                // clear and render new controls
+                phQuestionArea.Controls.Clear();
+                phQuestionArea.Controls.Add(new Label { ID = "lblQuestion", Text = currentQ.Text });
+                phQuestionArea.Controls.Add(new LiteralControl("<br /><br />"));
+
+                var options = surveyService.GetOptionsByQuestionID(this.CurrentConnectionString, currentQ.ID);
+
+                switch (currentQ.Type)
+                {
+                    case AppConstant.QuestionTypes.RadioButton:
+                    case AppConstant.QuestionTypes.RadioButtonRegister:
+                        RadioButtonList rbl = new RadioButtonList { ID = "ctlOptions", CssClass = "survey-rbl" };
+                        foreach (var opt in options) rbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(rbl);
+                        break;
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.CheckBox):
+                        CheckBoxList cbl = new CheckBoxList { ID = "ctlOptions", CssClass = "survey-cbl" };
+                        foreach (var opt in options) cbl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(cbl);
+                        break;
+                    case AppConstant.QuestionTypes.DropDown:
+                        DropDownList ddl = new DropDownList { ID = "ctlOptions", CssClass = "survey-ddl" };
+                        ddl.Items.Add(new ListItem("-- Select --", "0"));
+                        foreach (var opt in options) ddl.Items.Add(new ListItem(opt.OptionText, opt.OptionID.ToString()));
+                        phQuestionArea.Controls.Add(ddl);
+                        break;
+                    case string t when t.StartsWith(AppConstant.QuestionTypes.TextBoxAlpha.Split('_')[0]):
+                        TextBox txt = new TextBox { ID = "ctlOptions", TextMode = TextBoxMode.MultiLine, Rows = 4, CssClass = "form-control" };
+                        phQuestionArea.Controls.Add(txt);
+                        break;
+                }
+
+                btnSkip.Visible = (currentQ.MinSelections == 0 && currentQ.Type != AppConstant.QuestionTypes.RadioButtonRegister);
+            }
         }
     }
 }

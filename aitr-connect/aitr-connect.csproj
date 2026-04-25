@@ -109,6 +109,7 @@
       <DependentUpon>Search.aspx</DependentUpon>
     </Compile>
     <Compile Include="Services\DatabaseService.cs" />
+    <Compile Include="Services\RegisterService.cs" />
     <Compile Include="Services\SurveyService.cs" />
     <Compile Include="Survey.aspx.cs">
       <DependentUpon>Survey.aspx</DependentUpon>
@@ -117,7 +118,6 @@
     <Compile Include="Survey.aspx.designer.cs">
       <DependentUpon>Survey.aspx</DependentUpon>
     </Compile>
-    <Compile Include="SurveyQuestion.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
