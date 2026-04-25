@@ -110,6 +110,7 @@
     </Compile>
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\RegisterService.cs" />
+    <Compile Include="Services\SearchService.cs" />
     <Compile Include="Services\SurveyService.cs" />
     <Compile Include="Survey.aspx.cs">
       <DependentUpon>Survey.aspx</DependentUpon>

@@ -55,6 +55,17 @@ namespace aitr_connect
             public const string strQuestionType = "currentQuestionType";
 
             public const string strSurveyID = "currentSurveyID";
+
+            public const string strCurrentRegisterQuestionID = "currentRegisterQuestionID";
+        }
+
+        public static class QuestionConfig
+        {
+            public const int intFirstRegisterQuestionID = 14;
+            public const int intFirstNameID = 14;
+            public const int intLastNameID = 15;
+            public const int intBirthDateID = 16;
+            public const int intPhoneID = 17;
         }
 
 
