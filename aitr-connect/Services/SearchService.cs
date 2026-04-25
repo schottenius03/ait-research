@@ -53,52 +53,70 @@ namespace aitr_connect.Services
             if (!AppConstant.SearchSettings.FilterableColumns.Contains(columnName))
                 return metadata;
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            try
             {
-                string stem = columnName.ToLower();
-                if (stem.EndsWith("s") && stem.Length > 4)
-                    stem = stem.Substring(0, stem.Length - 1);
-
-                string sql = @"
-            SELECT DISTINCT o.optionText 
-            FROM [Option] o
-            JOIN Question q ON o.questionID = q.questionID
-            WHERE (q.questionText LIKE '%' + @colName + '%' 
-               OR q.questionText LIKE '%' + @stem + '%')";
-
-                // separating bank and bank services 
-                if (columnName == "Bank Services")
+                using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    sql += " OR (q.questionText LIKE '%Services%' AND q.questionText LIKE '%Bank%')";
-                }
+                    // handle plurals 
+                    string stem = columnName.ToLower();
+                    if (stem.EndsWith("s") && stem.Length > 4)
+                        stem = stem.Substring(0, stem.Length - 1);
 
-                if (columnName == "Bank")
-                {
-                    sql += " AND q.questionText NOT LIKE '%Services%'";
-                }
+                    string sql = @"
+                SELECT DISTINCT o.optionText 
+                FROM [Option] o
+                JOIN Question q ON o.questionID = q.questionID
+                WHERE (q.questionText LIKE '%' + @colName + '%' 
+                   OR q.questionText LIKE '%' + @stem + '%')";
 
-                sql += " ORDER BY o.optionText ASC";
-
-                using (SqlCommand cmd = new SqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@colName", columnName);
-                    cmd.Parameters.AddWithValue("@stem", stem);
-
-                    conn.Open();
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    // separate bank and bank service
+                    if (columnName == "Bank")
                     {
-                        while (reader.Read())
+                        sql += " AND q.questionText NOT LIKE '%Services%'";
+                    }
+
+                    if (columnName == "Bank Services")
+                    {
+                        sql += " OR (q.questionText LIKE '%Services%' AND q.questionText LIKE '%Bank%')";
+                    }
+
+                    sql += " ORDER BY o.optionText ASC";
+
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@colName", columnName);
+                        cmd.Parameters.AddWithValue("@stem", stem);
+
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            string optText = reader["optionText"].ToString();
+                            while (reader.Read())
+                            {
+                                string optText = reader["optionText"].ToString();
 
-                            if (columnName == "Newspaper" && (optText.ToLower().Contains("section") || optText.ToLower().Contains("page")))
-                                continue;
+                                if (columnName == "Newspaper" && (optText.ToLower().Contains("section") || optText.ToLower().Contains("page")))
+                                    continue;
 
-                            metadata.Options.Add(new ColumnOption { Text = optText, Value = optText });
+                                metadata.Options.Add(new ColumnOption
+                                {
+                                    Text = optText,
+                                    Value = optText
+                                });
+                            }
                         }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Critical error in GetColumnMetadata for " + columnName + ": " + ex.Message);
+
+                if (System.Web.HttpContext.Current != null)
+                {
+                    System.Web.HttpContext.Current.Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+                }
+            }
+
             return metadata;
         }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Text;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -12,12 +13,26 @@ namespace aitr_connect
     public partial class Search : PageBase
     {
         private SearchService _searchService = new SearchService();
+        protected override void OnInit(EventArgs e)
+        {
+            base.OnInit(e);
+            try
+            {
+                RenderFilters();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in OnInit (RenderFilters): " + ex.Message);
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
+        }
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Validera sidan via PageBase
             if (!PageValid()) Response.Redirect(AppConstant.PageCatalog.strErrorPage);
 
-            RenderFilters();
+            // RenderFilters anropas via OnInit för att hantera ViewState korrekt
 
             if (!IsPostBack)
             {
@@ -25,12 +40,26 @@ namespace aitr_connect
             }
         }
 
+        /// <summary>
+        /// fetches and binds the initial data to the GridView
+        /// </summary>
         private void BindGrid()
         {
-            gvUser.DataSource = _searchService.GetFilteredRespondents(this.CurrentConnectionString, null, "");
-            gvUser.DataBind();
+            try
+            {
+                gvUser.DataSource = _searchService.GetFilteredRespondents(this.CurrentConnectionString, null, "");
+                gvUser.DataBind();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error binding grid: " + ex.Message);
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
         }
 
+        /// <summary>
+        /// Generate filter controls for radioButtons and checkBoxes
+        /// </summary>
         private void RenderFilters()
         {
             phFilters.Controls.Clear();
@@ -89,65 +118,75 @@ namespace aitr_connect
 
         protected void btnSearch_Click(object sender, EventArgs e)
         {
-            List<SqlParameter> sqlParams = new List<SqlParameter>();
-            StringBuilder whereClause = new StringBuilder();
-
-            foreach (Control pnl in phFilters.Controls)
+            try
             {
-                if (pnl is Panel row)
+                List<SqlParameter> sqlParams = new List<SqlParameter>();
+                StringBuilder whereClause = new StringBuilder();
+
+                foreach (Control pnl in phFilters.Controls)
                 {
-                    foreach (Control child in row.Controls)
+                    if (pnl is Panel row)
                     {
-                        string val = "";
-                        string colName = "";
-                        bool isDropDown = false;
-
-                        if (child is DropDownList ddl && !string.IsNullOrEmpty(ddl.SelectedValue))
+                        foreach (Control child in row.Controls)
                         {
-                            val = ddl.SelectedValue;
-                            colName = ddl.Attributes["data-column"];
-                            isDropDown = true;
-                        }
-                        else if (child is TextBox tbx && !string.IsNullOrWhiteSpace(tbx.Text))
-                        {
-                            val = tbx.Text.Trim();
-                            colName = tbx.Attributes["data-column"];
-                            isDropDown = false;
-                        }
+                            string val = "";
+                            string colName = "";
+                            bool isDropDown = false;
 
-                        if (!string.IsNullOrEmpty(val))
-                        {
-                            string paramName = "@p" + sqlParams.Count;
-
-                            // checkBox categories
-                            if (isDropDown)
+                            if (child is DropDownList ddl && !string.IsNullOrEmpty(ddl.SelectedValue))
                             {
-                                if (colName == "Sports" || colName == "Travel Destination")
+                                val = ddl.SelectedValue;
+                                colName = ddl.Attributes["data-column"];
+                                isDropDown = true;
+                            }
+                            else if (child is TextBox tbx && !string.IsNullOrWhiteSpace(tbx.Text))
+                            {
+                                val = tbx.Text.Trim();
+                                colName = tbx.Attributes["data-column"];
+                                isDropDown = false;
+                            }
+
+                            if (!string.IsNullOrEmpty(val))
+                            {
+                                string paramName = "@p" + sqlParams.Count;
+
+                                // checkBox categories
+                                if (isDropDown)
                                 {
-                                    // include more than one option from filtering
-                                    whereClause.Append($" AND [{colName}] LIKE {paramName}");
-                                    sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
+                                    if (colName == "Sports" || colName == "Travel Destinations" ||
+                                        colName == "Bank" || colName == "Bank Services" ||
+                                        colName == "Newspaper" || colName == "News Section")
+                                    {
+                                        // include more than one option from filtering
+                                        whereClause.Append($" AND [{colName}] LIKE {paramName}");
+                                        sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
+                                    }
+                                    else
+                                    {
+                                        // rest of dropdowns
+                                        whereClause.Append($" AND [{colName}] = {paramName}");
+                                        sqlParams.Add(new SqlParameter(paramName, val));
+                                    }
                                 }
                                 else
                                 {
-                                    // rest of dropdowns
-                                    whereClause.Append($" AND [{colName}] = {paramName}");
-                                    sqlParams.Add(new SqlParameter(paramName, val));
+                                    // including for textboxes
+                                    whereClause.Append($" AND [{colName}] LIKE {paramName}");
+                                    sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
                                 }
-                            }
-                            else
-                            {
-                                // including for textboxes
-                                whereClause.Append($" AND [{colName}] LIKE {paramName}");
-                                sqlParams.Add(new SqlParameter(paramName, "%" + val + "%"));
                             }
                         }
                     }
                 }
-            }
 
-            gvUser.DataSource = _searchService.GetFilteredRespondents(this.CurrentConnectionString, sqlParams, whereClause.ToString());
-            gvUser.DataBind();
+                gvUser.DataSource = _searchService.GetFilteredRespondents(this.CurrentConnectionString, sqlParams, whereClause.ToString());
+                gvUser.DataBind();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in btnSearch_Click: " + ex.Message);
+                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+            }
         }
 
         protected void btnBackToDefault_Click(object sender, EventArgs e)
