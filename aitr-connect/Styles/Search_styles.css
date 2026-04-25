@@ -1,0 +1,53 @@
+﻿body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+.container {
+    padding: 30px;
+    background-color: #fff;
+    margin: 20px auto;
+    width: 90%;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Styling för de dynamiska raderna som skapas i C# */
+.search-row {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+    .search-row label {
+        font-weight: bold;
+        color: #333;
+    }
+
+.button-section {
+    margin: 25px 0;
+}
+
+.btn {
+    padding: 8px 20px;
+    cursor: pointer;
+}
+
+/* GridView Styling */
+.results-grid {
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+    .results-grid th {
+        background-color: #003399;
+        color: white;
+        padding: 10px;
+        text-align: left;
+    }
+
+    .results-grid td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }

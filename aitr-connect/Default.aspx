@@ -1,24 +1,24 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="aitr_connect.Default" %>
 
 <!DOCTYPE html>
-
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title>AIT Research</title>
+    <title>Home - AIT Research</title>
+    <link href="Styles/Default_styles.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
     <form id="form1" runat="server">
-        <div>
-            <asp:Label ID="lblTitle" runat="server" Text="Welcome to AIT Research" Font-Size="XX-Large" Font-Bold="True" ForeColor="#003399" ></asp:Label>
-            <br />
-            <br />
-            <asp:Button ID="btnSearch" runat="server" Text="Search repsondents" OnClick="btnSearch_Click" />
-            <br />
-            <br />
-            <asp:Button ID="btnRegister" runat="server" Text="Register respondent" OnClick="btnRegister_Click" />
-            <br />
-            <br />
-            <asp:Button ID="btnSurvey" runat="server" Text="Survey" OnClick="btnSurvey_Click" />
+        <div class="main-container">
+            <asp:Label ID="lblTitle" runat="server" CssClass="header-title" Text="AIT Research"></asp:Label>
+            <asp:Label ID="lblSub" runat="server" CssClass="sub-title" Text="Select a module to continue"></asp:Label>
+            
+            <div class="menu-area">
+                <asp:Button ID="btnSearch" runat="server" Text="Search Respondents" CssClass="btn btn-primary" OnClick="btnSearch_Click" />
+                
+                <asp:Button ID="btnRegister" runat="server" Text="Register Respondent" CssClass="btn btn-primary" OnClick="btnRegister_Click" />
+                
+                <asp:Button ID="btnSurvey" runat="server" Text="Take Survey" CssClass="btn btn-primary" OnClick="btnSurvey_Click" />
+            </div>
         </div>
     </form>
 </body>

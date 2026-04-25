@@ -208,7 +208,7 @@ namespace aitr_connect.Services
         }
 
         /// <summary>
-        /// store answer to ResponseAnswer table and update Respondent table when answering email 
+        /// Save answer and update ResponseAnswer table along with RespondentID 
         /// </summary>
         /// <param name="connectionString"></param>
         /// <param name="sessionID"></param>
@@ -221,6 +221,19 @@ namespace aitr_connect.Services
             {
                 conn.Open();
 
+                // get respondentID from session
+                int respondentID = 0;
+                string resSql = "SELECT respondentID FROM ResearchSession WHERE sessionID = @sID";
+                using (SqlCommand cmdRes = new SqlCommand(resSql, conn))
+                {
+                    cmdRes.Parameters.AddWithValue("@sID", sessionID);
+                    object resResult = cmdRes.ExecuteScalar();
+                    if (resResult != null && resResult != DBNull.Value)
+                    {
+                        respondentID = Convert.ToInt32(resResult);
+                    }
+                }
+
                 // get questionType
                 string typeSql = "SELECT questionType FROM Question WHERE questionID = @qID";
                 string qType = "";
@@ -231,13 +244,14 @@ namespace aitr_connect.Services
                     qType = result != null ? result.ToString() : "";
                 }
 
-                // save to ResponseAnswer
-                string sql = @"INSERT INTO ResponseAnswer (sessionID, questionID, optionID, textAnswer, dateRecorded) 
-                                VALUES (@sID, @qID, @oID, @txt, GETDATE())";
+                // save to ResponseAnswer with RespondentID
+                string sql = @"INSERT INTO ResponseAnswer (sessionID, respondentID, questionID, optionID, textAnswer, dateRecorded) 
+                        VALUES (@sID, @rID, @qID, @oID, @txt, GETDATE())";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@sID", sessionID);
+                    cmd.Parameters.AddWithValue("@rID", respondentID > 0 ? (object)respondentID : DBNull.Value);
                     cmd.Parameters.AddWithValue("@qID", questionID);
 
                     // handle Null values 
@@ -252,13 +266,13 @@ namespace aitr_connect.Services
                 {
                     // update anonymous status
                     string sqlEmail = @"UPDATE Respondent 
-                                        SET email = @email, IsAnonymous = 0 
-                                        WHERE respondentID = (SELECT respondentID FROM ResearchSession WHERE sessionID = @sID)";
+                                SET email = @email, IsAnonymous = 0 
+                                WHERE respondentID = @rID";
 
                     using (SqlCommand cmdEmail = new SqlCommand(sqlEmail, conn))
                     {
                         cmdEmail.Parameters.AddWithValue("@email", textAnswer);
-                        cmdEmail.Parameters.AddWithValue("@sID", sessionID);
+                        cmdEmail.Parameters.AddWithValue("@rID", respondentID);
                         cmdEmail.ExecuteNonQuery();
                     }
                 }
@@ -304,7 +318,7 @@ namespace aitr_connect.Services
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                // Vi hämtar displayOrder för den följdfråga (child) som är kopplad till det valda alternativet
+                // get sub question for the parent question
                 string sql = @"
             SELECT sq.displayOrder 
             FROM QuestionRule qr

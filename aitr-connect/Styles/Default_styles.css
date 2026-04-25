@@ -1,0 +1,71 @@
+﻿body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f7f9;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.main-container {
+    background-color: #ffffff;
+    padding: 50px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+.header-title {
+    color: #003399;
+    margin-bottom: 10px;
+    font-size: 32px;
+    font-weight: bold;
+    display: block;
+}
+
+.sub-title {
+    color: #666;
+    margin-bottom: 35px;
+    font-size: 16px;
+    display: block;
+}
+
+.menu-area {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn {
+    padding: 15px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* buttons blue */
+.btn-primary {
+    background-color: #003399;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 51, 153, 0.1);
+}
+
+    .btn-primary:hover {
+        background-color: #002266;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 51, 153, 0.2);
+    }
+
+.btn i {
+    margin-right: 10px;
+}

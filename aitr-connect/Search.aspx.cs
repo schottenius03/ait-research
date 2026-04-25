@@ -1,69 +1,56 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Web;
-using System.Web.UI;
 using System.Web.UI.WebControls;
+using aitr_connect.Services;
 
 namespace aitr_connect
 {
+    // ÄNDRA HÄR: Ärv från PageBase istället för Page
     public partial class Search : PageBase
     {
-        // run PageBase before getting all the objects 
-        protected void Page_Init(object sender, EventArgs e)
-        {
-            if (!PageValid())
-            {
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
-            }
-        }
+        private SearchService _searchService = new SearchService();
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            // get enviroment from PageBase
-            SqlConnection myconn = new SqlConnection(this.CurrentConnectionString);
+            // Kontrollera om sidan är giltig (samma mönster som Register)
+            if (!PageValid()) Response.Redirect(AppConstant.PageCatalog.strErrorPage);
 
-            try
+            // Använd this.CurrentConnectionString som PageBase tillhandahåller
+            RenderFilters();
+
+            if (!IsPostBack)
             {
-                myconn.Open();
-
-                SqlCommand myCmd = new SqlCommand("SELECT * FROM Respondent", myconn);
-                SqlDataReader reader = myCmd.ExecuteReader();
-
-                DataTable dt = new DataTable();
-                dt.Columns.Add("Firstname", typeof(String));
-                dt.Columns.Add("Surname", typeof(String));
-                dt.Columns.Add("Date of Birth", typeof(DateTime));
-                dt.Columns.Add("Phone Number", typeof(String));
-                dt.Columns.Add("Email", typeof(String));
-
-                while (reader.Read())
-                {
-                    DataRow row = dt.NewRow();
-                    row["Firstname"] = reader["firstName"];
-                    row["Surname"] = reader["lastName"];
-                    row["Date of Birth"] = reader["dateOfBirth"]; 
-                    row["Phone Number"] = reader["phoneNumber"];
-                    row["Email"] = reader["email"];
-
-                    dt.Rows.Add(row);
-                }
-
-                gvUser.DataSource = dt;
-                gvUser.DataBind(); // bind gv to reader
-
-                myconn.Close();
+                BindGrid();
             }
-            catch (Exception ex) // getting all exceptions 
+        }
+
+        private void BindGrid()
+        {
+            // Vi skickar med connectionsträngen från PageBase
+            gvUser.DataSource = _searchService.GetAllRespondents(this.CurrentConnectionString);
+            gvUser.DataBind();
+        }
+
+        private void RenderFilters()
+        {
+            phFilters.Controls.Clear();
+            DataTable dt = _searchService.GetFilterCriteria(this.CurrentConnectionString);
+
+            foreach (DataRow row in dt.Rows)
             {
-                // set errorMessage
-                Session[AppConstant.SessionNameList.strErroMessage] = "An unexpected error occurred while loading data. Please try again later.";
+                Panel pnlRow = new Panel { CssClass = "search-row" };
+                pnlRow.Controls.Add(new Label { Text = row["questionText"].ToString() + ": " });
 
-                // redirect to ErrorPage
-                Response.Redirect(AppConstant.PageCatalog.strErrorPage);
+                TextBox tbx = new TextBox { ID = "filter_" + row["questionID"] };
+                pnlRow.Controls.Add(tbx);
+
+                phFilters.Controls.Add(pnlRow);
             }
+        }
+
+        protected void btnSearch_Click(object sender, EventArgs e)
+        {
+            BindGrid();
         }
 
         protected void btnBackToDefault_Click(object sender, EventArgs e)

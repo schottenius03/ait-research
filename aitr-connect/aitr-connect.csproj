@@ -71,6 +71,10 @@
     <Content Include="ErrorPage.aspx" />
     <Content Include="Register.aspx" />
     <Content Include="Search.aspx" />
+    <Content Include="Styles\Default_styles.css" />
+    <Content Include="Styles\Register_styles.css" />
+    <Content Include="Styles\Search_styles.css" />
+    <Content Include="Styles\Survey_styles.css" />
     <Content Include="Survey.aspx" />
     <Content Include="Web.config" />
   </ItemGroup>
