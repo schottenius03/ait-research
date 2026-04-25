@@ -215,7 +215,11 @@ namespace aitr_connect.Services
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                string sql = "UPDATE Respondent SET IsAnonymous = 0 WHERE respondentID = @rID";
+                // update both table 
+                string sql = @"
+                    UPDATE Respondent SET IsAnonymous = 0 WHERE respondentID = @rID;
+                    UPDATE ResearchSession SET isCompleted = 1 WHERE respondentID = @rID;";
+
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@rID", respondentID);

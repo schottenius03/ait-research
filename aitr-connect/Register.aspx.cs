@@ -36,6 +36,16 @@ namespace aitr_connect
         }
         protected void btnBackToDefault_Click(object sender, EventArgs e)
         {
+            // mark complete in DB if respondent exists
+            if (Session[AppConstant.SessionNameList.strRespondentID] != null)
+            {
+                int resID = Convert.ToInt32(Session[AppConstant.SessionNameList.strRespondentID]);
+                _registerService.MarkAsRegistered(this.CurrentConnectionString, resID);
+            }
+
+            // delete all sessions
+            Session.Abandon();
+
             Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
         }
 
@@ -71,7 +81,8 @@ namespace aitr_connect
                     // complete registration
                     if (_registerService.MarkAsRegistered(this.CurrentConnectionString, resID))
                     {
-                        Session.Remove(AppConstant.SessionNameList.strCurrentRegisterQuestionID);
+                        // Clean up session and redirect, same as survey logic
+                        Session.Abandon();
                         Response.Redirect(AppConstant.PageCatalog.strDefaultPage);
                     }
                 }
